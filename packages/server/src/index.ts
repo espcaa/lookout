@@ -13,7 +13,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const app = Fastify({ logger: true });
 
-await app.register(cors, { origin: true });
+await app.register(cors, {
+  origin: (origin, cb) => {
+    if (!origin || /\.hackclub\.com$/.test(new URL(origin).hostname)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Not allowed by CORS"), false);
+    }
+  },
+});
 
 // Security headers
 app.addHook("onSend", async (_request, reply) => {

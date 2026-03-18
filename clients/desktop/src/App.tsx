@@ -19,7 +19,7 @@ import type { CaptureSource } from "./hooks/useNativeCapture.js";
 import { SourcePicker } from "./components/SourcePicker.js";
 import { useScreenPreview } from "./hooks/useScreenPreview.js";
 
-const API_BASE = "http://localhost:3001"; // TODO: make configurable
+const API_BASE = "https://collapse.b.selfhosted.hackclub.com";
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -147,6 +147,12 @@ function DesktopRecorder({ token, source, onChangeSource, onBack }: {
 }) {
   const session = useSession();
   const capture = useNativeCapture(token, API_BASE, source);
+  // Live preview when not actively recording
+  const showLivePreview = !capture.isCapturing;
+  const { previewUrl: livePreviewUrl } = useScreenPreview(
+    showLivePreview ? source : null,
+    2000,
+  );
   const displaySeconds = useSessionTimer(
     capture.trackedSeconds || session.trackedSeconds,
     capture.isCapturing,
@@ -214,10 +220,17 @@ function DesktopRecorder({ token, source, onChangeSource, onBack }: {
         uploads={{ pending: 0, completed: capture.screenshotCount, failed: 0 }}
       />
 
-      {capture.lastScreenshotUrl && (
+      {/* Preview: live when idle, last capture when recording */}
+      {(livePreviewUrl || capture.lastScreenshotUrl) && (
         <div style={styles.preview}>
-          <img src={capture.lastScreenshotUrl} alt="Latest" style={styles.previewImg} />
-          <span style={styles.previewLabel}>Latest screenshot</span>
+          <img
+            src={capture.isCapturing ? (capture.lastScreenshotUrl ?? livePreviewUrl!) : livePreviewUrl!}
+            alt="Screen preview"
+            style={styles.previewImg}
+          />
+          <span style={styles.previewLabel}>
+            {capture.isCapturing ? "Latest capture" : "Live preview"}
+          </span>
         </div>
       )}
 
