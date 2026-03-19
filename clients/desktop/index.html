@@ -25,7 +25,10 @@
       window.addEventListener('keydown', function(e) {
         if (e.key === '`') {
           var el = document.getElementById('debug');
-          if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+          if (!el) return;
+          var show = el.style.display === 'none';
+          el.style.display = show ? 'block' : 'none';
+          if (show && window.__dbgRender) window.__dbgRender();
         }
       });
     </script>

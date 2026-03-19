@@ -296,6 +296,27 @@ mod base64_engine {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Single-instance MUST be first: on Windows/Linux, when a second
+        // instance is launched (e.g. deep link click while app is running),
+        // this detects it, forwards args to the running instance, and exits
+        // before initializing any other plugins.
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // The deep-link URL is passed as the second CLI arg.
+            // Emit the deep-link event so the frontend's onOpenUrl listener
+            // picks it up (cold_start_urls polling has already finished).
+            if args.len() == 2 {
+                if let Ok(url) = args[1].parse::<url::Url>() {
+                    eprintln!("[single-instance] forwarded deep link: {url}");
+                    use tauri::Emitter;
+                    let _ = app.emit("deep-link://new-url", vec![url]);
+                }
+            }
+
+            // Focus the existing window
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_http::init())
@@ -312,6 +333,15 @@ pub fn run() {
             get_cold_start_urls,
         ])
         .setup(|app| {
+            // On Windows/Linux, ensure the collapse:// protocol handler is
+            // registered even if the installer didn't do it (dev builds,
+            // portable installs, AppImages).
+            #[cfg(desktop)]
+            {
+                let _ = app.deep_link().register_all();
+                eprintln!("[deep-link] registered protocol handler");
+            }
+
             // Try get_current() for cold start
             let current = app.deep_link().get_current();
             eprintln!("[deep-link] get_current() = {current:?}");

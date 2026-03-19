@@ -117,7 +117,7 @@ function scheduleRender() {
 function render() {
   renderScheduled = false;
   const el = document.getElementById("debug");
-  if (!el) return;
+  if (!el || el.style.display === "none") return;
 
   // Build HTML
   let html =
@@ -191,6 +191,13 @@ export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Pr
     throw err;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Expose render so the backtick toggle (in index.html) can trigger a
+// catch-up render when the panel is made visible.
+// ---------------------------------------------------------------------------
+
+(window as any).__dbgRender = render;
 
 // ---------------------------------------------------------------------------
 // Init log
