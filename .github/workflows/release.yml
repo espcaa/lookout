@@ -79,6 +79,7 @@ jobs:
         uses: swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           workspaces: "./clients/desktop/src-tauri -> target"
+          shared-key: release-${{ matrix.platform }}-${{ matrix.args || 'native' }}
 
       - name: Install dependencies
         run: npm ci
