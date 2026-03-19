@@ -6,8 +6,12 @@ on:
       - "v*"
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
-  release:
+  build:
     permissions:
       contents: write
     strategy:
@@ -85,9 +89,9 @@ jobs:
           npm run build -w packages/shared
           npm run build -w clients/react
 
-      - name: Build and release
-        id: tauri
-        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
+      - name: Build app
+        run: npm run tauri build -- ${{ matrix.args }}
+        working-directory: clients/desktop
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # macOS code signing & notarization
@@ -97,14 +101,6 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-        with:
-          projectPath: "./clients/desktop"
-          tagName: v__VERSION__
-          releaseName: "Collapse v__VERSION__"
-          releaseBody: "See the assets to download and install."
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
 
       - name: Sign Windows binaries with Trusted Signing
         if: runner.os == 'Windows'
@@ -116,43 +112,115 @@ jobs:
           endpoint: https://eus.codesigning.azure.net/
           trusted-signing-account-name: hackclub
           certificate-profile-name: hackatime-desktop
-          files-folder: ${{ github.workspace }}/clients/desktop/src-tauri/target
-          files-folder-filter: exe
+          files-folder: ${{ github.workspace }}/clients/desktop/src-tauri/target/release/bundle
+          files-folder-filter: msi,exe
           files-folder-recurse: true
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
 
-      - name: Rename release assets with OS labels
+      - name: Sign Windows ARM binaries with Trusted Signing
+        if: runner.os == 'Windows' && contains(matrix.args, 'aarch64')
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net/
+          trusted-signing-account-name: hackclub
+          certificate-profile-name: hackatime-desktop
+          files-folder: ${{ github.workspace }}/clients/desktop/src-tauri/target/aarch64-pc-windows-msvc/release/bundle
+          files-folder-filter: msi,exe
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-${{ matrix.args || 'native' }}
+          path: |
+            clients/desktop/src-tauri/target/*/release/bundle/**/*.dmg
+            clients/desktop/src-tauri/target/*/release/bundle/**/*.app.tar.gz
+            clients/desktop/src-tauri/target/release/bundle/**/*.dmg
+            clients/desktop/src-tauri/target/release/bundle/**/*.app.tar.gz
+            clients/desktop/src-tauri/target/release/bundle/**/*.AppImage
+            clients/desktop/src-tauri/target/release/bundle/**/*.deb
+            clients/desktop/src-tauri/target/release/bundle/**/*.rpm
+            clients/desktop/src-tauri/target/release/bundle/**/*.msi
+            clients/desktop/src-tauri/target/release/bundle/**/*.exe
+            clients/desktop/src-tauri/target/*/release/bundle/**/*.msi
+            clients/desktop/src-tauri/target/*/release/bundle/**/*.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display artifacts
+        run: ls -R artifacts
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Rename artifacts with OS labels
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( \
+            -name "*.dmg" -o \
+            -name "*.app.tar.gz" -o \
+            -name "*.AppImage" -o \
+            -name "*.deb" -o \
+            -name "*.rpm" -o \
+            -name "*.msi" -o \
+            -name "*.exe" \
+          \) | while read -r file; do
+            FILENAME=$(basename "$file")
+            # Determine OS label from artifact directory
+            case "$file" in
+              *macos*) OS="macos" ;;
+              *ubuntu*) OS="linux" ;;
+              *windows*) OS="windows" ;;
+              *) OS="unknown" ;;
+            esac
+            # Add OS label: Collapse_0.0.7_x64-setup.exe -> Collapse_0.0.7_windows-x64-setup.exe
+            if [[ "$FILENAME" == *"_"* ]] && [[ "$FILENAME" != *"${OS}-"* ]]; then
+              PREFIX="${FILENAME%%_*}"
+              SUFFIX="${FILENAME#*_}"
+              NEW_NAME="${PREFIX}_${OS}-${SUFFIX}"
+            else
+              NEW_NAME="$FILENAME"
+            fi
+            echo "Renaming: $FILENAME -> $NEW_NAME"
+            cp "$file" "release-assets/$NEW_NAME"
+          done
+          ls -la release-assets/
+
+      - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          OS_LABEL="${{ matrix.os_label }}"
+          VERSION="${TAG#v}"
 
-          # Draft releases aren't visible via /releases/tags/, so search all releases
-          RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases" --jq ".[] | select(.tag_name==\"${TAG}\") | .id")
-          if [ -z "$RELEASE_ID" ]; then
-            echo "No release found for tag ${TAG}, skipping rename"
-            exit 0
-          fi
+          # Create draft release
+          gh release create "$TAG" \
+            --title "Collapse v${VERSION}" \
+            --notes "See the assets to download and install." \
+            --draft
 
-          # Map OS label to file extensions this job produces
-          case "$OS_LABEL" in
-            macos)   EXTS="dmg" ;;
-            linux)   EXTS="deb AppImage" ;;
-            windows) EXTS="exe msi" ;;
-          esac
-
-          gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets" --jq '.[] | "\(.id) \(.name)"' | while read -r ASSET_ID ASSET_NAME; do
-            EXT="${ASSET_NAME##*.}"
-            # Only rename assets matching this platform's extensions
-            if [[ " $EXTS " == *" $EXT "* ]] && [[ "$ASSET_NAME" != *"${OS_LABEL}-"* ]]; then
-              PREFIX="${ASSET_NAME%_*}"
-              SUFFIX="${ASSET_NAME##*_}"
-              NEW_NAME="${PREFIX}_${OS_LABEL}-${SUFFIX}"
-              echo "Renaming: ${ASSET_NAME} → ${NEW_NAME}"
-              gh api --method PATCH "repos/${{ github.repository }}/releases/assets/${ASSET_ID}" -f name="${NEW_NAME}" --silent
-            fi
+          # Upload all renamed artifacts
+          for file in release-assets/*; do
+            echo "Uploading: $file"
+            gh release upload "$TAG" "$file" --clobber
           done
