@@ -18,23 +18,29 @@ jobs:
           - platform: macos-latest
             args: --target aarch64-apple-darwin
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            os_label: macos-arm64
           - platform: macos-latest
             args: --target x86_64-apple-darwin
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            os_label: macos-x64
           # Linux
           - platform: ubuntu-22.04
             args: ""
             rust_targets: ""
+            os_label: linux-x64
           - platform: ubuntu-24.04-arm
             args: ""
             rust_targets: ""
+            os_label: linux-arm64
           # Windows
           - platform: windows-latest
             args: ""
             rust_targets: ""
+            os_label: windows-x64
           - platform: windows-latest
             args: --target aarch64-pc-windows-msvc
             rust_targets: aarch64-pc-windows-msvc
+            os_label: windows-arm64
 
     runs-on: ${{ matrix.platform }}
 
@@ -81,6 +87,7 @@ jobs:
           npm run build -w clients/react
 
       - name: Build and release
+        id: tauri
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -92,3 +99,25 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Rename release assets with OS labels
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases/tags/${TAG}" --jq '.id')
+          OS_LABEL="${{ matrix.os_label }}"
+
+          gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets" --jq '.[] | "\(.id) \(.name)"' | while read -r ASSET_ID ASSET_NAME; do
+            # Insert OS label before the file extension
+            # e.g. Collapse_0.0.1_aarch64.dmg → Collapse_0.0.1_macos-arm64_aarch64.dmg
+            EXT="${ASSET_NAME##*.}"
+            BASE="${ASSET_NAME%.*}"
+            # Only rename assets that don't already have an OS label
+            if [[ "$ASSET_NAME" != *"$OS_LABEL"* ]]; then
+              NEW_NAME="${BASE}_${OS_LABEL}.${EXT}"
+              echo "Renaming: ${ASSET_NAME} → ${NEW_NAME}"
+              gh api --method PATCH "repos/${{ github.repository }}/releases/assets/${ASSET_ID}" -f name="${NEW_NAME}" --silent
+            fi
+          done
