@@ -107,7 +107,7 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Sign Windows binaries with Trusted Signing
-        if: runner.os == 'Windows' && !contains(matrix.args, 'aarch64')
+        if: runner.os == 'Windows'
         uses: azure/trusted-signing-action@v0.5.1
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -116,8 +116,8 @@ jobs:
           endpoint: https://eus.codesigning.azure.net/
           trusted-signing-account-name: hackclub
           certificate-profile-name: hackatime-desktop
-          files-folder: ${{ github.workspace }}/clients/desktop/src-tauri/target/release/bundle
-          files-folder-filter: msi,exe
+          files-folder: ${{ github.workspace }}/clients/desktop/src-tauri/target
+          files-folder-filter: exe
           files-folder-recurse: true
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
