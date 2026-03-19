@@ -12,7 +12,12 @@ window.fetch = function (input, init) {
   const method = init?.method || "GET";
   console.log(`[net] ${method} ${url}`);
 
-  const doFetch = (url.startsWith("http://") || url.startsWith("https://"))
+  // On Windows, Tauri v2 uses fetch('http://ipc.localhost/...') for IPC and
+  // 'http://asset.localhost/...' for assets. We must NOT intercept these or
+  // tauriFetch recurses through invoke → fetch → tauriFetch → OOM.
+  const isExternal = (url.startsWith("http://") || url.startsWith("https://"))
+    && !url.includes(".localhost");
+  const doFetch = isExternal
     ? tauriFetch(input as any, init) as any
     : originalFetch.call(window, input, init);
 
