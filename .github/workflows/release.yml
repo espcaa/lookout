@@ -14,13 +14,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS
+          # macOS (universal binary for both Intel and Apple Silicon)
           - platform: macos-latest
-            args: --target aarch64-apple-darwin
-            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
-            os_label: macos
-          - platform: macos-latest
-            args: --target x86_64-apple-darwin
+            args: --target universal-apple-darwin
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
             os_label: macos
           # Linux
