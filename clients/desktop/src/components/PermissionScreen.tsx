@@ -87,8 +87,8 @@ export function PermissionScreen({ onGranted }: { onGranted: () => void }) {
           onClick={handleRequest}
           style={{
             borderRadius: 999,
-            background: "#fff",
-            color: "#111",
+            background: "rgba(255, 255, 255, 0.9)",
+            color: "#000",
             border: "none",
             fontWeight: 600,
           }}
@@ -103,7 +103,7 @@ export function PermissionScreen({ onGranted }: { onGranted: () => void }) {
             marginTop: spacing.xl,
             borderRadius: 999,
             background: "rgba(255, 255, 255, 0.1)",
-            color: "#eee",
+            color: "rgba(255, 255, 255, 0.6)",
             border: "none",
             display: "inline-flex",
             padding: "8px 24px",

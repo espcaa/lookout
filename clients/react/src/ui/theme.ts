@@ -1,13 +1,13 @@
 export const colors = {
-  bg: { body: "#0a0a0a", surface: "#1a1a1a", sunken: "#111" },
-  text: { primary: "#fff", secondary: "#888", tertiary: "#666", quaternary: "#555", error: "#fca5a5" },
-  border: { default: "#333", hover: "#444" },
+  bg: { body: "transparent", surface: "rgba(255, 255, 255, 0.05)", sunken: "rgba(255, 255, 255, 0.02)" },
+  text: { primary: "#fff", secondary: "rgba(255, 255, 255, 0.6)", tertiary: "rgba(255, 255, 255, 0.4)", quaternary: "rgba(255, 255, 255, 0.2)", error: "#fca5a5" },
+  border: { default: "rgba(255, 255, 255, 0.1)", hover: "rgba(255, 255, 255, 0.2)" },
   status: {
     success: "#22c55e",
     info: "#3b82f6",
     warning: "#f59e0b",
     danger: "#ef4444",
-    neutral: "#888",
+    neutral: "rgba(255, 255, 255, 0.5)",
   },
 } as const;
 
