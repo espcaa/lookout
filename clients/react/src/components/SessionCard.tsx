@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import type { SessionSummary } from "@collapse/shared";
 import { formatTrackedTime } from "../hooks/useSessionTimer.js";
 import { Badge } from "../ui/Badge.js";
@@ -27,7 +28,7 @@ export function SessionCard({ session, onClick, onArchive }: SessionCardProps) {
           <img
             src={session.thumbnailUrl}
             alt="Timelapse thumbnail"
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            style={{ width: "100%", height: "100%", objectFit: "fill", display: "block" }}
             loading="lazy"
           />
         ) : (
@@ -59,31 +60,68 @@ export function SessionCard({ session, onClick, onArchive }: SessionCardProps) {
 
       {/* Archive button */}
       {onArchive && (
-        <button
+        <motion.button
+          whileTap="active"
+          initial="idle"
           style={{
             position: "absolute",
-            top: 6,
-            left: 6,
+            top: spacing.sm,
+            left: spacing.sm,
             width: 24,
             height: 24,
             borderRadius: "50%",
-            background: "rgba(0,0,0,0.6)",
-            color: colors.text.secondary,
+            background: "transparent",
+            color: "var(--color-archive-icon, #fff)",
             border: "none",
             cursor: "pointer",
             fontSize: fontSize.lg,
-            lineHeight: "24px",
-            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             padding: 0,
+            zIndex: 10,
           }}
-          onClick={(e) => {
+          onClick={(e: any) => {
             e.stopPropagation();
             onArchive();
           }}
+          onPointerDown={(e: any) => e.stopPropagation()}
           title="Archive"
         >
-          &times;
-        </button>
+          <motion.div
+            variants={{ idle: { scale: 1 }, active: { scale: 0.99 } }}
+            transition={{ type: "spring", stiffness: 1500, damping: 60 }}
+            style={{
+              position: "absolute", inset: 0, borderRadius: "50%",
+              background: "var(--color-archive-bg, rgba(0,0,0,0.6))",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              border: `1px solid var(--color-archive-border, rgba(255,255,255,0.1))`,
+              zIndex: 0,
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={(e: any) => {
+              e.currentTarget.style.background = "var(--color-archive-hover-bg, rgba(255,255,255,0.1))";
+              e.currentTarget.style.borderColor = "var(--color-archive-hover-border, rgba(255,255,255,0.2))";
+              if (e.currentTarget.parentElement) {
+                 e.currentTarget.parentElement.style.color = "var(--color-text-error, #ef4444)";
+              }
+            }}
+            onMouseLeave={(e: any) => {
+              e.currentTarget.style.background = "var(--color-archive-bg, rgba(0,0,0,0.6))";
+              e.currentTarget.style.borderColor = "var(--color-archive-border, rgba(255,255,255,0.1))";
+              if (e.currentTarget.parentElement) {
+                 e.currentTarget.parentElement.style.color = "var(--color-archive-icon, #fff)";
+              }
+            }}
+          />
+          <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", transition: "color 0.15s" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </div>
+        </motion.button>
       )}
     </Card>
   );

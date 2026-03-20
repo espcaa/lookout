@@ -1,8 +1,14 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import { emit } from "@tauri-apps/api/event";
 import { createRoot } from "react-dom/client";
 import React from "react";
 import { getReport } from "./logger.js"; // side-effect: captures console, renders debug panel
 import { App } from "./App.js";
+
+// Add global debug helper for deep links
+(window as any).__simulateDeepLink = (url: string) => {
+  emit('collapse-deep-link', [url]).catch(err => console.error("Simulate deep link failed:", err));
+};
 
 // Wrap fetch so only cross-origin requests go through Tauri's HTTP plugin.
 // Keeping native fetch for same-origin/local requests avoids breaking React internals.
@@ -62,7 +68,7 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 24, fontFamily: "monospace", background: "#0a0a0a", color: "#e5e5e5", minHeight: "100vh" }}>
+        <div style={{ padding: 24, fontFamily: "monospace", background: "transparent", color: "var(--color-text-primary, #e5e5e5)", minHeight: "100vh" }}>
           <div style={{ maxWidth: 500, margin: "0 auto", border: "1px solid #f44", borderRadius: 8, padding: 20 }}>
             <h2 style={{ color: "#f44", margin: "0 0 12px 0", fontSize: 18 }}>Something went wrong</h2>
             <pre style={{ color: "#faa", fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: 300, overflowY: "auto", marginBottom: 16 }}>

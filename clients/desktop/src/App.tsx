@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
+import { listen } from "@tauri-apps/api/event";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { invoke } from "./logger.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -94,13 +95,16 @@ export function App() {
   handleDeepLinkRef.current = handleDeepLinkUrls;
 
   // Listen for deep links while app is running (warm start).
-  // Use the ref so this effect never re-subscribes — onOpenUrl creates a
-  // Tauri event listener and the async cleanup can race with re-subscription.
+  // We use our custom "collapse-deep-link" event to avoid conflicts and infinite loops
+  // with the tauri-plugin-deep-link internal event loops.
   useEffect(() => {
-    const unlistenPlugin = onOpenUrl((urls) => {
-      handleDeepLinkRef.current(urls);
+    let unlisten: (() => void) | undefined;
+    listen<string[]>("collapse-deep-link", (event) => {
+      handleDeepLinkRef.current(event.payload);
+    }).then((fn) => {
+      unlisten = fn;
     });
-    return () => { unlistenPlugin.then((fn) => fn()); };
+    return () => { if (unlisten) unlisten(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -144,6 +148,47 @@ export function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Enable vibrancy globally for the app
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById("root");
+    const prevHtmlBg = html.style.background;
+    const prevBodyBg = body.style.background;
+    const prevRootBg = root?.style.background ?? "";
+
+    let effectsApplied = false;
+    
+    const isLinux = navigator.userAgent.toLowerCase().includes("linux");
+    if (!isLinux) {
+      invoke("enable_vibrancy")
+        .then(() => {
+          effectsApplied = true;
+          html.style.background = "transparent";
+          body.style.background = "transparent";
+          if (root) root.style.background = "transparent";
+        })
+        .catch((err) => {
+          console.warn("Failed to enable vibrancy", err);
+        });
+    } else {
+      console.log("[vibrancy] skipped on Linux");
+      // Explicitly set opaque background on Linux to override any default transparent styling
+      html.style.background = "var(--color-bg-body)";
+      body.style.background = "var(--color-bg-body)";
+      if (root) root.style.background = "var(--color-bg-body)";
+    }
+
+    return () => {
+      if (effectsApplied) {
+        invoke("disable_vibrancy").catch(() => {});
+      }
+      html.style.background = prevHtmlBg;
+      body.style.background = prevBodyBg;
+      if (root) root.style.background = prevRootBg;
+    };
+  }, []);
+
   // Step 2: Route
   const content = (() => {
     switch (route.page) {
@@ -161,9 +206,12 @@ export function App() {
                 navigate({ page: "session", token });
               }
             }}
-            onArchive={(token) => {
-              tokenStore.archiveToken(token);
-              gallery.refresh();
+            onArchive={async (token) => {
+              const yes = await confirm("Are you sure you want to archive this session?", { title: "Archive Session", kind: "warning" });
+              if (yes) {
+                tokenStore.archiveToken(token);
+                gallery.refresh();
+              }
             }}
             onRefresh={gallery.refresh}
           />
@@ -190,9 +238,12 @@ export function App() {
             token={route.token}
             apiBaseUrl={API_BASE}
             onBack={() => navigate({ page: "gallery" })}
-            onArchive={() => {
-              tokenStore.archiveToken(route.token);
-              navigate({ page: "gallery" });
+            onArchive={async () => {
+              const yes = await confirm("Are you sure you want to archive this session?", { title: "Archive Session", kind: "warning" });
+              if (yes) {
+                tokenStore.archiveToken(route.token);
+                navigate({ page: "gallery" });
+              }
             }}
           />
         );
@@ -217,7 +268,12 @@ export function App() {
           style={{ height: 32, flexShrink: 0, width: "100%", zIndex: 9999, background: "transparent", cursor: "default" }}
         />
       )}
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+      <div style={{
+        flex: 1,
+        overflowY: route.page === "gallery" ? "hidden" : "auto",
+        display: "flex",
+        flexDirection: "column",
+      }}>
         {mainView}
       </div>
     </div>

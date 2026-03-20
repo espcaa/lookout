@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import { colors, radii, fontWeight } from "./theme.js";
 import { Spinner } from "./Spinner.js";
 
@@ -10,12 +11,12 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const variantStyles: Record<string, React.CSSProperties> = {
-  primary: { background: colors.status.info, color: "#fff", border: "none" },
-  success: { background: colors.status.success, color: "#fff", border: "none" },
-  danger: { background: colors.status.danger, color: "#fff", border: "none" },
-  warning: { background: colors.status.warning, color: "#000", border: "none" },
+  primary: { background: colors.status.info, color: "#fff", border: "1px solid transparent" },
+  success: { background: colors.status.success, color: "#fff", border: "1px solid transparent" },
+  danger: { background: colors.status.danger, color: "#fff", border: "1px solid transparent" },
+  warning: { background: colors.status.warning, color: "#000", border: "1px solid transparent" },
   secondary: { background: "transparent", color: colors.text.secondary, border: `1px solid ${colors.border.hover}` },
-  ghost: { background: "transparent", color: colors.text.secondary, border: "none" },
+  ghost: { background: "transparent", color: colors.text.secondary, border: "1px solid transparent" },
 };
 
 const sizeStyles: Record<string, React.CSSProperties> = {
@@ -35,28 +36,63 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  
+  // Extract presentation styles to apply to the inner div so they don't get overridden or ignored
+  const { background, border, borderRadius, color, ...outerStyle } = (style as React.CSSProperties) || {};
+
   return (
-    <button
+    <motion.button
+      whileTap={isDisabled ? undefined : "active"}
+      initial="idle"
       disabled={isDisabled}
       style={{
+        position: "relative",
         fontWeight: fontWeight.semibold,
-        borderRadius: radii.md,
+        borderRadius: borderRadius ?? radii.md,
         cursor: isDisabled ? "not-allowed" : "pointer",
         opacity: isDisabled ? 0.6 : 1,
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 8,
         width: fullWidth ? "100%" : undefined,
-        transition: "opacity 0.15s",
-        ...variantStyles[variant],
-        ...sizeStyles[size],
-        ...style,
+        padding: 0,
+        color: color ?? variantStyles[variant].color,
+        background: "transparent",
+        border: "1px solid transparent",
+        ...outerStyle,
       }}
-      {...rest}
+      {...(rest as any)}
     >
-      {loading && <Spinner size="sm" color={variant === "warning" ? "#000" : "#fff"} />}
-      {children}
-    </button>
+      <motion.div
+        variants={{
+          idle: { scale: 1 },
+          active: { scale: 0.96 }
+        }}
+        transition={{ type: "spring", stiffness: 1500, damping: 60 }}
+        style={{
+          position: "absolute",
+          inset: -1,
+          borderRadius: borderRadius ?? radii.md,
+          background: background ?? variantStyles[variant].background,
+          border: border ?? variantStyles[variant].border,
+          transition: "opacity 0.15s, background 0.15s, border-color 0.15s",
+        }}
+      />
+      <span
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          width: "100%",
+          ...sizeStyles[size],
+        }}
+      >
+        {loading && <Spinner size="sm" color={variant === "warning" ? "#000" : "#fff"} />}
+        {children}
+      </span>
+    </motion.button>
   );
 }

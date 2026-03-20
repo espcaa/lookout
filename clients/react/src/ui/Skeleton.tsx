@@ -16,7 +16,8 @@ export function Skeleton({ width, height, borderRadius = radii.md, aspectRatio, 
       height: height ?? (aspectRatio ? undefined : 20),
       aspectRatio,
       borderRadius,
-      background: `linear-gradient(90deg, ${colors.bg.surface} 25%, ${colors.border.default} 50%, ${colors.bg.surface} 75%)`,
+      backgroundColor: colors.skeleton.bg,
+      backgroundImage: `linear-gradient(90deg, transparent 0%, ${colors.skeleton.shimmer} 50%, transparent 100%)`,
       backgroundSize: "200% 100%",
       animation: "shimmer 1.5s ease-in-out infinite",
       ...style,
@@ -48,7 +49,7 @@ export function GallerySkeleton() {
 
 export function SessionDetailSkeleton() {
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: spacing.lg }}>
+    <div style={{ padding: spacing.lg }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: spacing.lg }}>
         <Skeleton width={80} height={32} borderRadius={radii.sm} />
         <Skeleton width={80} height={32} borderRadius={radii.sm} />

@@ -6,6 +6,7 @@ import { ErrorDisplay } from "../ui/ErrorDisplay.js";
 import { ProcessingState } from "./ProcessingState.js";
 import { SessionDetailSkeleton } from "../ui/Skeleton.js";
 import { Card } from "../ui/Card.js";
+import { Badge } from "../ui/Badge.js";
 import { statusConfig, colors, spacing, fontSize, fontWeight } from "../ui/theme.js";
 
 export interface SessionDetailProps {
@@ -80,7 +81,7 @@ export function SessionDetail({
   }, [status?.status, fetchStatus]);
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: spacing.lg }}>
+    <div style={{ padding: spacing.lg }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.lg }}>
         {onBack && (
@@ -118,7 +119,7 @@ export function SessionDetail({
       {status && (
         <>
           {/* Video area */}
-          <div style={{ marginBottom: spacing.lg }}>
+          <div style={{ marginBottom: spacing.lg, marginLeft: -spacing.lg, marginRight: -spacing.lg }}>
             <ProcessingState
               status={status.status}
               trackedSeconds={status.trackedSeconds}
@@ -129,19 +130,15 @@ export function SessionDetail({
           {/* Stats */}
           <div style={{ display: "flex", gap: spacing.lg, justifyContent: "center" }}>
             <Card padding={`${spacing.md}px ${spacing.xxl}px`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: spacing.xs }}>
-              <span style={{ fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary }}>
+              <span style={{ fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary, height: 32, display: "flex", alignItems: "center" }}>
                 {formatTrackedTime(status.trackedSeconds)}
               </span>
               <span style={{ fontSize: fontSize.xs, color: colors.text.tertiary }}>Tracked time</span>
             </Card>
             <Card padding={`${spacing.md}px ${spacing.xxl}px`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: spacing.xs }}>
-              <span style={{
-                fontSize: fontSize.xxl,
-                fontWeight: fontWeight.bold,
-                color: (statusConfig[status.status] ?? { color: colors.text.secondary }).color,
-              }}>
-                {(statusConfig[status.status] ?? { label: status.status }).label}
-              </span>
+              <div style={{ height: 32, display: "flex", alignItems: "center" }}>
+                <Badge status={status.status} variant="inline" size="lg" />
+              </div>
               <span style={{ fontSize: fontSize.xs, color: colors.text.tertiary }}>Status</span>
             </Card>
           </div>

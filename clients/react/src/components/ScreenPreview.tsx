@@ -1,5 +1,7 @@
 import React from "react";
 
+import { colors, radii, spacing, fontSize } from "../ui/theme.js";
+
 export interface ScreenPreviewProps {
   imageUrl: string | null;
 }
@@ -18,21 +20,21 @@ export function ScreenPreview({ imageUrl }: ScreenPreviewProps) {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     position: "relative",
-    marginBottom: 16,
-    borderRadius: 8,
+    marginBottom: spacing.lg,
+    borderRadius: radii.md,
     overflow: "hidden",
-    background: "#111",
-    border: "1px solid #333",
+    background: colors.bg.sunken,
+    border: `1px solid ${colors.border.default}`,
   },
   image: { width: "100%", display: "block" },
   label: {
     position: "absolute",
-    bottom: 8,
-    right: 8,
-    fontSize: 12,
-    color: "#aaa",
-    background: "rgba(0,0,0,0.7)",
+    bottom: spacing.sm,
+    right: spacing.sm,
+    fontSize: fontSize.sm,
+    color: colors.text.secondary,
+    background: "rgba(0,0,0,0.5)",
     padding: "2px 8px",
-    borderRadius: 4,
+    borderRadius: radii.sm,
   },
 };

@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { invoke } from "../logger.js";
+import { LayoutGroup, motion } from "motion/react";
 import {
   Button,
   ErrorDisplay,
@@ -54,6 +55,17 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
   const [tab, setTab] = useState<"screens" | "windows">("screens");
   const [selected, setSelected] = useState<CaptureSource | null>(null);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showTopMask, setShowTopMask] = useState(false);
+  const [showBottomMask, setShowBottomMask] = useState(false);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    setShowTopMask(scrollTop > 0);
+    setShowBottomMask(Math.ceil(scrollTop + clientHeight) < scrollHeight);
+  }, []);
+
   // Live preview of currently selected source
   const { previewUrl } = useScreenPreview(selected, 1500);
 
@@ -64,6 +76,8 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
       console.log(`[sources] found ${result.monitors.length} monitors, ${result.windows.length} windows`);
       setSources(result);
       setError(null);
+      // Wait for render then check scroll
+      setTimeout(handleScroll, 10);
 
       // Auto-select primary monitor if nothing selected yet
       if (!selected) {
@@ -81,6 +95,12 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
   }, [selected]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  useEffect(() => {
+    handleScroll();
+    window.addEventListener('resize', handleScroll);
+    return () => window.removeEventListener('resize', handleScroll);
+  }, [tab, sources, handleScroll]);
 
   if (error) {
     return (
@@ -115,104 +135,175 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
   const hasWindows = sources.windows.length > 0;
 
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto", padding: spacing.lg, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      <h2 style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.md, textAlign: "center" }}>
-        What should Collapse capture?
-      </h2>
+    <div style={{
+      maxWidth: 480,
+      margin: "0 auto",
+      padding: spacing.lg,
+      display: "flex",
+      flexDirection: "column",
+      height: "100%", // Fill parent RecordPage container
+      maxHeight: "100%",
+    }}>
+      <div style={{ flexShrink: 0 }}>
+        <h2 style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.md, textAlign: "center" }}>
+          What should Collapse capture?
+        </h2>
 
-      {/* Live preview */}
-      <div style={{
-        borderRadius: radii.lg, overflow: "hidden", background: colors.bg.sunken,
-        border: `1px solid ${colors.border.default}`, marginBottom: spacing.lg, aspectRatio: "16/9",
-      }}>
-        {previewUrl ? (
-          <img src={previewUrl} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
-        ) : (
-          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ fontSize: fontSize.md, color: colors.text.quaternary, textAlign: "center" }}>
-              {selected ? "Capturing preview..." : "Select a source below"}
-            </p>
-          </div>
+        {/* Live preview */}
+        <div style={{
+          borderRadius: radii.lg, overflow: "hidden", background: colors.bg.sunken,
+          border: `1px solid ${colors.border.default}`, marginBottom: spacing.lg, aspectRatio: "16/9",
+        }}>
+          {previewUrl ? (
+            <img src={previewUrl} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+          ) : (
+            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <p style={{ fontSize: fontSize.md, color: colors.text.quaternary, textAlign: "center" }}>
+                {selected ? "Capturing preview..." : "Select a source below"}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        {hasWindows && (
+          <LayoutGroup>
+            <div style={{
+              display: "flex", gap: spacing.xs, marginBottom: spacing.md, background: colors.bg.surface,
+              borderRadius: radii.md, padding: 4, position: "relative", alignItems: "stretch"
+            }}>
+              <button
+                style={{
+                  flex: 1, padding: `6px ${spacing.sm}px`, fontSize: fontSize.sm, fontWeight: tab === "screens" ? fontWeight.semibold : fontWeight.medium,
+                  background: "transparent",
+                  color: tab === "screens" ? colors.text.primary : colors.text.secondary,
+                  border: "none", borderRadius: radii.sm, cursor: "pointer",
+                  position: "relative",
+                  display: "flex", alignItems: "center", justifyContent: "center"
+                }}
+                onClick={() => setTab("screens")}
+              >
+                {tab === "screens" && (
+                  <motion.div
+                    layoutId="activeTabIndicator"
+                    transition={{ type: "spring", stiffness: 350, damping: 35 }}
+                    style={{
+                      position: "absolute", inset: 0, borderRadius: radii.sm,
+                      background: colors.border.default, zIndex: 0,
+                    }}
+                  />
+                )}
+                <span style={{ position: "relative", zIndex: 1, display: "inline-block" }}>
+                  Screens ({sources.monitors.length})
+                </span>
+              </button>
+              <button
+                style={{
+                  flex: 1, padding: `6px ${spacing.sm}px`, fontSize: fontSize.sm, fontWeight: tab === "windows" ? fontWeight.semibold : fontWeight.medium,
+                  background: "transparent",
+                  color: tab === "windows" ? colors.text.primary : colors.text.secondary,
+                  border: "none", borderRadius: radii.sm, cursor: "pointer",
+                  position: "relative",
+                  display: "flex", alignItems: "center", justifyContent: "center"
+                }}
+                onClick={() => setTab("windows")}
+              >
+                {tab === "windows" && (
+                  <motion.div
+                    layoutId="activeTabIndicator"
+                    transition={{ type: "spring", stiffness: 350, damping: 35 }}
+                    style={{
+                      position: "absolute", inset: 0, borderRadius: radii.sm,
+                      background: colors.border.default, zIndex: 0,
+                    }}
+                  />
+                )}
+                <span style={{ position: "relative", zIndex: 1, display: "inline-block" }}>
+                  Windows ({sources.windows.length})
+                </span>
+              </button>
+              <Button variant="ghost" size="sm" onClick={refresh} title="Refresh" style={{ padding: `6px ${spacing.sm}px`, fontSize: fontSize.md, height: "auto" }}>
+                &#x21bb;
+              </Button>
+            </div>
+          </LayoutGroup>
         )}
       </div>
 
-      {/* Tabs */}
-      {hasWindows && (
-        <div style={{
-          display: "flex", gap: spacing.xs, marginBottom: spacing.md, background: colors.bg.surface,
-          borderRadius: radii.md, padding: spacing.xs,
-        }}>
-          <button
-            style={{
-              flex: 1, padding: `7px ${spacing.md}px`, fontSize: fontSize.sm, fontWeight: tab === "screens" ? fontWeight.semibold : fontWeight.medium,
-              background: tab === "screens" ? colors.border.default : "transparent",
-              color: tab === "screens" ? colors.text.primary : colors.text.secondary,
-              border: "none", borderRadius: radii.sm, cursor: "pointer",
-            }}
-            onClick={() => setTab("screens")}
-          >
-            Screens ({sources.monitors.length})
-          </button>
-          <button
-            style={{
-              flex: 1, padding: `7px ${spacing.md}px`, fontSize: fontSize.sm, fontWeight: tab === "windows" ? fontWeight.semibold : fontWeight.medium,
-              background: tab === "windows" ? colors.border.default : "transparent",
-              color: tab === "windows" ? colors.text.primary : colors.text.secondary,
-              border: "none", borderRadius: radii.sm, cursor: "pointer",
-            }}
-            onClick={() => setTab("windows")}
-          >
-            Windows ({sources.windows.length})
-          </button>
-          <Button variant="ghost" size="sm" onClick={refresh} title="Refresh" style={{ padding: `7px ${spacing.md}px`, fontSize: fontSize.lg }}>
-            &#x21bb;
-          </Button>
-        </div>
-      )}
-
       {/* Source list */}
-      <div style={{ display: "flex", flexDirection: "column", gap: spacing.xs, flex: 1, minHeight: 0, overflowY: "auto" }}>
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: spacing.xs,
+        flex: 1, // Let it fill available space
+        minHeight: 0, // Critical for nested flex scrolling
+        overflowY: "auto",
+        // Add a smooth fade out mask at top/bottom of scroll area
+        maskImage: `linear-gradient(to bottom, ${showTopMask ? 'transparent 0%, black 12px' : 'black 0%, black 12px'}, ${showBottomMask ? 'black calc(100% - 12px), transparent 100%' : 'black calc(100% - 12px), black 100%'})`,
+        WebkitMaskImage: `linear-gradient(to bottom, ${showTopMask ? 'transparent 0%, black 12px' : 'black 0%, black 12px'}, ${showBottomMask ? 'black calc(100% - 12px), transparent 100%' : 'black calc(100% - 12px), black 100%'})`,
+        paddingBottom: spacing.xs,
+      }}>
         {(tab === "screens" || !hasWindows) &&
           sources.monitors.map((m) => {
             const src: CaptureSource = { type: "monitor", id: m.id };
             const isSelected = sourcesEqual(selected, src);
             return (
-              <button
+              <motion.button
                 key={`m-${m.id}`}
+                whileTap="active"
+                initial="idle"
                 style={{
                   display: "flex", alignItems: "center", gap: spacing.md,
-                  padding: `${spacing.md}px ${spacing.md}px`, background: isSelected ? "rgba(59,130,246,0.08)" : colors.bg.surface,
-                  border: `1px solid ${isSelected ? colors.status.info : colors.border.default}`,
+                  padding: `${spacing.md}px ${spacing.md}px`, background: "transparent",
+                  border: "none",
                   borderRadius: radii.md, cursor: "pointer", textAlign: "left" as const,
-                  width: "100%", transition: "border-color 0.15s",
+                  width: "100%", position: "relative",
                 }}
                 onClick={() => setSelected(src)}
               >
-                <div style={{
-                  width: 18, height: 18, borderRadius: "50%",
-                  border: `2px solid ${isSelected ? colors.status.info : colors.text.quaternary}`,
-                  flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.status.info }} />}
+                <motion.div
+                  variants={{ idle: { scale: 1 }, active: { scale: 0.98 } }}
+                  transition={{ type: "spring", stiffness: 1500, damping: 60 }}
+                  style={{
+                    position: "absolute", inset: 0,
+                    background: isSelected ? colors.bg.selected : colors.bg.surface,
+                    border: `1px solid ${isSelected ? colors.border.selected : colors.border.default}`,
+                    borderRadius: radii.md,
+                    zIndex: 0,
+                  }}
+                />
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: spacing.md, width: "100%", position: "relative", zIndex: 1 }}
+                >
+                  <div style={{
+                    width: 18, height: 18, borderRadius: "50%",
+                    border: `2px solid ${isSelected ? colors.icon.selected : colors.text.quaternary}`,
+                    flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.icon.selected }} />}
+                  </div>
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, gap: 2, minWidth: 0 }}>
+                    <span style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary, display: "flex", alignItems: "center", gap: spacing.sm }}>
+                      {m.name}
+                      {m.isPrimary && (
+                        <span style={{
+                          fontSize: fontSize.xs - 1, fontWeight: fontWeight.semibold, color: colors.badge.primaryText,
+                          background: colors.badge.primaryBg, padding: "1px 6px", borderRadius: radii.sm,
+                        }}>
+                          Primary
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ fontSize: fontSize.xs, color: colors.text.tertiary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                      {m.width}x{m.height}
+                      {m.scaleFactor > 1 && ` @ ${m.scaleFactor}x`}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, gap: 2, minWidth: 0 }}>
-                  <span style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary, display: "flex", alignItems: "center", gap: spacing.sm }}>
-                    {m.name}
-                    {m.isPrimary && (
-                      <span style={{
-                        fontSize: fontSize.xs - 1, fontWeight: fontWeight.semibold, color: colors.status.success,
-                        background: `${colors.status.success}26`, padding: "1px 6px", borderRadius: radii.sm,
-                      }}>
-                        Primary
-                      </span>
-                    )}
-                  </span>
-                  <span style={{ fontSize: fontSize.xs, color: colors.text.tertiary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
-                    {m.width}x{m.height}
-                    {m.scaleFactor > 1 && ` @ ${m.scaleFactor}x`}
-                  </span>
-                </div>
-              </button>
+              </motion.button>
             );
           })}
 
@@ -221,29 +312,45 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
             const src: CaptureSource = { type: "window", id: w.id };
             const isSelected = sourcesEqual(selected, src);
             return (
-              <button
+              <motion.button
                 key={`w-${w.id}`}
+                whileTap="active"
+                initial="idle"
                 style={{
                   display: "flex", alignItems: "center", gap: spacing.md,
-                  padding: `${spacing.md}px ${spacing.md}px`, background: isSelected ? "rgba(59,130,246,0.08)" : colors.bg.surface,
-                  border: `1px solid ${isSelected ? colors.status.info : colors.border.default}`,
+                  padding: `${spacing.md}px ${spacing.md}px`, background: "transparent",
+                  border: "none",
                   borderRadius: radii.md, cursor: "pointer", textAlign: "left" as const,
-                  width: "100%", transition: "border-color 0.15s",
+                  width: "100%", position: "relative",
                   ...(w.isMinimized ? { opacity: 0.5 } : {}),
                 }}
                 onClick={() => setSelected(src)}
               >
-                <div style={{
-                  width: 18, height: 18, borderRadius: "50%",
-                  border: `2px solid ${isSelected ? colors.status.info : colors.text.quaternary}`,
-                  flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.status.info }} />}
-                </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, gap: 2, minWidth: 0 }}>
-                  <span style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary, display: "flex", alignItems: "center", gap: spacing.sm }}>
-                    {w.appName || w.title}
-                    {w.isMinimized && (
+                <motion.div
+                  variants={{ idle: { scale: 1 }, active: { scale: 0.98 } }}
+                  transition={{ type: "spring", stiffness: 1500, damping: 60 }}
+                  style={{
+                    position: "absolute", inset: 0,
+                    background: isSelected ? colors.bg.selected : colors.bg.surface,
+                    border: `1px solid ${isSelected ? colors.border.selected : colors.border.default}`,
+                    borderRadius: radii.md,
+                    zIndex: 0,
+                  }}
+                />
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: spacing.md, width: "100%", position: "relative", zIndex: 1 }}
+                >
+                  <div style={{
+                    width: 18, height: 18, borderRadius: "50%",
+                    border: `2px solid ${isSelected ? colors.icon.selected : colors.text.quaternary}`,
+                    flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.icon.selected }} />}
+                  </div>
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, gap: 2, minWidth: 0 }}>
+                    <span style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary, display: "flex", alignItems: "center", gap: spacing.sm }}>
+                      {w.appName || w.title}
+                      {w.isMinimized && (
                       <span style={{
                         fontSize: fontSize.xs - 1, fontWeight: fontWeight.medium, color: colors.text.secondary,
                         background: `${colors.text.secondary}26`, padding: "1px 6px", borderRadius: radii.sm,
@@ -257,17 +364,20 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
                     {w.width}x{w.height}
                   </span>
                 </div>
-              </button>
+                </div>
+              </motion.button>
             );
           })}
       </div>
 
       {/* Start button */}
-      {selected && (
-        <Button variant="primary" size="lg" fullWidth onClick={() => onSelect(selected)} style={{ marginTop: spacing.lg }}>
-          {submitLabel}
-        </Button>
-      )}
+      <div style={{ flexShrink: 0 }}>
+        {selected && (
+          <Button variant="primary" size="lg" fullWidth onClick={() => onSelect(selected)} style={{ marginTop: spacing.lg }}>
+            {submitLabel}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

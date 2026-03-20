@@ -69,7 +69,7 @@ export function PermissionScreen({ onGranted }: { onGranted: () => void }) {
 
   return (
     <PageContainer centered>
-      <div style={{ width: "100%", maxWidth: 520, textAlign: "center", padding: 24 }}>
+      <div style={{ width: "100%", maxWidth: 520, textAlign: "center", padding: 24, background: "transparent" }}>
         <h2 style={{ fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.md }}>
           Screen Recording Permission
         </h2>
@@ -86,9 +86,9 @@ export function PermissionScreen({ onGranted }: { onGranted: () => void }) {
           fullWidth
           onClick={handleRequest}
           style={{
-            borderRadius: 999,
-            background: "#fff",
-            color: "#111",
+            borderRadius: 9999,
+            background: colors.text.primary,
+            color: colors.text.inverse,
             border: "none",
             fontWeight: 600,
           }}
@@ -101,9 +101,9 @@ export function PermissionScreen({ onGranted }: { onGranted: () => void }) {
           onClick={onGranted}
           style={{
             marginTop: spacing.xl,
-            borderRadius: 999,
-            background: "rgba(255, 255, 255, 0.1)",
-            color: "#eee",
+            borderRadius: 9999,
+            background: colors.bg.surface,
+            color: colors.text.secondary,
             border: "none",
             display: "inline-flex",
             padding: "8px 24px",
