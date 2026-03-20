@@ -5,7 +5,7 @@ Simple time-tracking via periodic screenshots as a service, designed to be embed
 We have 2 official clients for this service:
 
 - [Web React SDK](/clients/react/API.md) - for embedding the recorder in your web app.
-- [Desktop App](/clients/desktop/) - for download on Mac, Windows, and Linux.
+- [Desktop App](https://github.com/hackclub/collapse/releases) - for download on Mac, Windows, and Linux.
 
 > [!NOTE]
 > If you're a YSWS program author hoping to integrate Collapse into your program, please reach out to me via Slack (@samliu)
