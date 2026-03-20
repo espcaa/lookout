@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { listen } from "@tauri-apps/api/event";
 import {
   useSession,
   useSessionTimer,
