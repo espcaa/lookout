@@ -11,6 +11,7 @@
   },
   "app": {
     "withGlobalTauri": false,
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Collapse",
@@ -19,6 +20,7 @@
         "resizable": false,
         "fullscreen": false,
         "maximizable": false,
+        "transparent": true,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true
       }
