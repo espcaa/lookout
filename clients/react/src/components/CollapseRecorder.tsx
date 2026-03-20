@@ -75,7 +75,11 @@ export function CollapseRecorder() {
   const isCamera = state.captureMode === "camera";
 
   // ─── Camera mode: preview → record flow ────────────────
-  if (isCamera) {
+  // Once recording, camera mode renders the same as screen mode
+  // (static screenshot preview + standard controls) for performance.
+  // Camera-specific UI (live preview, device picker) only shows
+  // during the idle and preview phases.
+  if (isCamera && !state.isSharing) {
     return (
       <PageContainer maxWidth={800} style={{ padding: spacing.xxl }}>
         <StatusBar
@@ -84,18 +88,17 @@ export function CollapseRecorder() {
           uploads={state.uploads}
         />
 
-        {/* Camera selector — show whenever devices are available and we're not mid-recording */}
-        {state.availableCameras.length > 1 && (
+        {/* Camera selector — only during preview (not recording) */}
+        {state.availableCameras.length > 1 && state.isPreviewing && (
           <CameraSelector
             devices={state.availableCameras}
             selectedDeviceId={state.selectedCameraId}
             onSelect={actions.selectCamera}
-            disabled={state.isSharing}
           />
         )}
 
-        {/* Preview/capture display */}
-        {state.isPreviewing || state.previewStream ? (
+        {/* Live preview or last captured frame */}
+        {state.isPreviewing ? (
           <CameraPreview
             stream={state.previewStream}
             fallbackImageUrl={state.lastScreenshotUrl}
@@ -105,37 +108,26 @@ export function CollapseRecorder() {
         ) : null}
 
         {/* Camera-specific controls */}
-        {!state.isPreviewing && !state.isSharing ? (
-          /* Phase 1: No stream yet — prompt to start camera */
+        {!state.isPreviewing ? (
+          /* Idle: no stream yet */
           <CameraIdleControls
             status={state.status}
             onStartPreview={actions.startPreview}
             onStartRecording={actions.startSharing}
             onStop={actions.stop}
           />
-        ) : state.isPreviewing && !state.isSharing ? (
-          /* Phase 2: Previewing — show "Start Recording" */
+        ) : (
+          /* Previewing: show "Start Recording" */
           <CameraPreviewControls
             onStartRecording={actions.startSharing}
             onStopPreview={actions.stopPreview}
-          />
-        ) : (
-          /* Phase 3: Recording — standard recording controls */
-          <RecordingControls
-            status={state.status}
-            isSharing={state.isSharing}
-            onStartSharing={actions.startSharing}
-            onPause={actions.pause}
-            onResume={actions.resume}
-            onStop={actions.stop}
-            captureMode="camera"
           />
         )}
       </PageContainer>
     );
   }
 
-  // ─── Screen mode (default) ─────────────────────────────
+  // ─── Active recording (both modes) or screen idle ───────
   return (
     <PageContainer maxWidth={800} style={{ padding: spacing.xxl }}>
       <StatusBar
@@ -151,7 +143,7 @@ export function CollapseRecorder() {
         onPause={actions.pause}
         onResume={actions.resume}
         onStop={actions.stop}
-        captureMode="screen"
+        captureMode={state.captureMode}
       />
     </PageContainer>
   );
