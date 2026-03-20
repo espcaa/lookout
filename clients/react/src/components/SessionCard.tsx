@@ -62,19 +62,33 @@ export function SessionCard({ session, onClick, onArchive }: SessionCardProps) {
         <button
           style={{
             position: "absolute",
-            top: 6,
-            left: 6,
+            top: spacing.sm,
+            left: spacing.sm,
             width: 24,
             height: 24,
             borderRadius: "50%",
-            background: "rgba(0,0,0,0.6)",
-            color: colors.text.secondary,
-            border: "none",
+            background: "var(--color-bg-surface, rgba(0,0,0,0.6))",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            color: "var(--color-text-primary, #fff)",
+            border: `1px solid var(--color-border-default, rgba(255,255,255,0.1))`,
             cursor: "pointer",
             fontSize: fontSize.lg,
-            lineHeight: "24px",
-            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             padding: 0,
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--color-bg-selected, rgba(255,255,255,0.1))";
+            e.currentTarget.style.color = "var(--color-text-error, #ef4444)";
+            e.currentTarget.style.borderColor = "var(--color-border-hover, rgba(255,255,255,0.2))";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "var(--color-bg-surface, rgba(0,0,0,0.6))";
+            e.currentTarget.style.color = "var(--color-text-primary, #fff)";
+            e.currentTarget.style.borderColor = "var(--color-border-default, rgba(255,255,255,0.1))";
           }}
           onClick={(e) => {
             e.stopPropagation();
