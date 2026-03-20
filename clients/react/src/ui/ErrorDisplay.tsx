@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import { colors, radii, fontSize, fontWeight, spacing } from "./theme.js";
 import { Button } from "./Button.js";
 
@@ -38,8 +39,42 @@ export function ErrorDisplay({ error, variant = "banner", title, onDismiss, onCo
         {title && <strong style={{ display: "block", marginBottom: spacing.xs }}>{title}</strong>}
         <pre style={{ margin: 0, fontSize: fontSize.xs, fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: 120, overflowY: "auto" }}>{error}</pre>
       </div>
-      {onCopy && <button onClick={onCopy} style={{ background: "none", border: "1px solid " + colors.text.error, color: colors.text.error, cursor: "pointer", fontSize: fontSize.xs, lineHeight: 1, padding: "2px 8px", borderRadius: radii.sm, whiteSpace: "nowrap" as const }}>Copy</button>}
-      {onDismiss && <button onClick={onDismiss} style={{ background: "none", border: "none", color: colors.text.error, cursor: "pointer", fontSize: fontSize.xl, lineHeight: 1, padding: 0 }}>&times;</button>}
+      {onCopy && (
+        <motion.button 
+          onClick={onCopy} 
+          whileTap="active"
+          initial="idle"
+          variants={{ idle: { scale: 1 }, active: { scale: 0.96 } }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          style={{ background: "none", border: "1px solid " + colors.text.error, color: colors.text.error, cursor: "pointer", fontSize: fontSize.xs, lineHeight: 1, padding: "2px 8px", borderRadius: radii.sm, whiteSpace: "nowrap" as const }}
+        >
+          <motion.span
+            variants={{ idle: { scale: 1 }, active: { scale: 1 / 0.96 } }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            style={{ display: "inline-block" }}
+          >
+            Copy
+          </motion.span>
+        </motion.button>
+      )}
+      {onDismiss && (
+        <motion.button 
+          onClick={onDismiss} 
+          whileTap="active"
+          initial="idle"
+          variants={{ idle: { scale: 1 }, active: { scale: 0.96 } }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          style={{ background: "none", border: "none", color: colors.text.error, cursor: "pointer", fontSize: fontSize.xl, lineHeight: 1, padding: 0 }}
+        >
+          <motion.span
+            variants={{ idle: { scale: 1 }, active: { scale: 1 / 0.96 } }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            style={{ display: "inline-block" }}
+          >
+            &times;
+          </motion.span>
+        </motion.button>
+      )}
     </div>
   );
 }

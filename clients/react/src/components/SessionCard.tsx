@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import type { SessionSummary } from "@collapse/shared";
 import { formatTrackedTime } from "../hooks/useSessionTimer.js";
 import { Badge } from "../ui/Badge.js";
@@ -59,7 +60,11 @@ export function SessionCard({ session, onClick, onArchive }: SessionCardProps) {
 
       {/* Archive button */}
       {onArchive && (
-        <button
+        <motion.button
+          whileTap="active"
+          initial="idle"
+          variants={{ idle: { scale: 1 }, active: { scale: 0.96 } }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           style={{
             position: "absolute",
             top: spacing.sm,
@@ -80,27 +85,33 @@ export function SessionCard({ session, onClick, onArchive }: SessionCardProps) {
             padding: 0,
             transition: "all 0.15s",
           }}
-          onMouseEnter={(e) => {
+          onMouseEnter={(e: any) => {
             e.currentTarget.style.background = "var(--color-bg-selected, rgba(255,255,255,0.1))";
             e.currentTarget.style.color = "var(--color-text-error, #ef4444)";
             e.currentTarget.style.borderColor = "var(--color-border-hover, rgba(255,255,255,0.2))";
           }}
-          onMouseLeave={(e) => {
+          onMouseLeave={(e: any) => {
             e.currentTarget.style.background = "var(--color-bg-surface, rgba(0,0,0,0.6))";
             e.currentTarget.style.color = "var(--color-text-primary, #fff)";
             e.currentTarget.style.borderColor = "var(--color-border-default, rgba(255,255,255,0.1))";
           }}
-          onClick={(e) => {
+          onClick={(e: any) => {
             e.stopPropagation();
             onArchive();
           }}
           title="Archive"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+          <motion.span
+            variants={{ idle: { scale: 1 }, active: { scale: 1 / 0.96 } }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </motion.span>
+        </motion.button>
       )}
     </Card>
   );

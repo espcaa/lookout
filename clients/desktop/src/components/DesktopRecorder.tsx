@@ -240,7 +240,7 @@ export function DesktopRecorder({ token, source, onChangeSource, onBack }: Deskt
           />
           <span style={{
             position: "absolute", bottom: 6, right: 6, fontSize: fontSize.xs,
-            color: colors.text.tertiary, background: "rgba(0,0,0,0.7)",
+            color: colors.badge.overlayText, background: colors.badge.overlayBg,
             padding: "2px 6px", borderRadius: radii.sm,
           }}>
             {capture.lastScreenshotUrl ? "Latest capture" : "Live preview"}

@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import { colors, radii, fontWeight } from "./theme.js";
 import { Spinner } from "./Spinner.js";
 
@@ -36,7 +37,14 @@ export function Button({
 }: ButtonProps) {
   const isDisabled = disabled || loading;
   return (
-    <button
+    <motion.button
+      whileTap={isDisabled ? undefined : "active"}
+      initial="idle"
+      variants={{
+        idle: { scale: 1 },
+        active: { scale: 0.96 }
+      }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
       disabled={isDisabled}
       style={{
         fontWeight: fontWeight.semibold,
@@ -46,17 +54,31 @@ export function Button({
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 8,
         width: fullWidth ? "100%" : undefined,
-        transition: "opacity 0.15s",
+        transition: "opacity 0.15s, background 0.15s, border-color 0.15s",
         ...variantStyles[variant],
         ...sizeStyles[size],
         ...style,
       }}
-      {...rest}
+      {...(rest as any)}
     >
-      {loading && <Spinner size="sm" color={variant === "warning" ? "#000" : "#fff"} />}
-      {children}
-    </button>
+      <motion.span
+        variants={{
+          idle: { scale: 1 },
+          active: { scale: 1 / 0.96 }
+        }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          width: "100%"
+        }}
+      >
+        {loading && <Spinner size="sm" color={variant === "warning" ? "#000" : "#fff"} />}
+        {children}
+      </motion.span>
+    </motion.button>
   );
 }

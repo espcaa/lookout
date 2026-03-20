@@ -8,8 +8,10 @@ export interface SpinnerProps {
 
 const sizes = { sm: 16, md: 24, lg: 40 };
 
-export function Spinner({ size = "md", color = "rgba(255, 255, 255, 0.8)" }: SpinnerProps) {
+export function Spinner({ size = "md", color }: SpinnerProps) {
   const s = sizes[size];
+  const baseColor = colors.spinner.base;
+  const trackColor = color || colors.spinner.track;
   
   return (
     <svg
@@ -27,14 +29,14 @@ export function Spinner({ size = "md", color = "rgba(255, 255, 255, 0.8)" }: Spi
         cx="12"
         cy="12"
         r="10"
-        stroke="rgba(255, 255, 255, 0.1)"
+        stroke={baseColor}
         strokeWidth="2"
       />
       <circle
         cx="12"
         cy="12"
         r="10"
-        stroke={color === colors.status.info ? "rgba(255, 255, 255, 0.8)" : color}
+        stroke={trackColor}
         strokeWidth="2"
         strokeLinecap="round"
         strokeDasharray="62.83"

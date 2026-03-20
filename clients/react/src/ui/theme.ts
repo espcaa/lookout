@@ -24,8 +24,17 @@ if (isBrowser) {
       
       --color-status-neutral: rgba(255, 255, 255, 0.2);
       
+      --color-spinner-base: rgba(255, 255, 255, 0.1);
+      --color-spinner-track: rgba(255, 255, 255, 0.8);
+      
+      --color-skeleton-bg: rgba(255, 255, 255, 0.03);
+      --color-skeleton-shimmer: rgba(255, 255, 255, 0.08);
+      
       --color-badge-primary-bg: #22c55e26;
       --color-badge-primary-text: #22c55e;
+      
+      --color-badge-overlay-bg: rgba(0, 0, 0, 0.7);
+      --color-badge-overlay-text: #ffffff;
     }
     
     @media (prefers-color-scheme: light) {
@@ -49,8 +58,17 @@ if (isBrowser) {
 
         --color-status-neutral: #000000;
         
+        --color-spinner-base: rgba(0, 0, 0, 0.1);
+        --color-spinner-track: rgba(0, 0, 0, 0.8);
+
+        --color-skeleton-bg: rgba(0, 0, 0, 0.05);
+        --color-skeleton-shimmer: rgba(0, 0, 0, 0.08);
+        
         --color-badge-primary-bg: #22c55e;
         --color-badge-primary-text: #ffffff;
+
+        --color-badge-overlay-bg: #000000;
+        --color-badge-overlay-text: #ffffff;
       }
     }
   `;
@@ -62,7 +80,14 @@ export const colors = {
   text: { primary: "var(--color-text-primary)", secondary: "var(--color-text-secondary)", tertiary: "var(--color-text-tertiary)", quaternary: "var(--color-text-quaternary)", error: "var(--color-text-error)" },
   border: { default: "var(--color-border-default)", hover: "var(--color-border-hover)", selected: "var(--color-border-selected)" },
   icon: { selected: "var(--color-icon-selected)" },
-  badge: { primaryBg: "var(--color-badge-primary-bg)", primaryText: "var(--color-badge-primary-text)" },
+  spinner: { base: "var(--color-spinner-base)", track: "var(--color-spinner-track)" },
+  skeleton: { bg: "var(--color-skeleton-bg)", shimmer: "var(--color-skeleton-shimmer)" },
+  badge: { 
+    primaryBg: "var(--color-badge-primary-bg)", 
+    primaryText: "var(--color-badge-primary-text)",
+    overlayBg: "var(--color-badge-overlay-bg)",
+    overlayText: "var(--color-badge-overlay-text)",
+  },
   status: {
     success: "#22c55e",
     info: "#3b82f6",
