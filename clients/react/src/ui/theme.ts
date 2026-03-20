@@ -44,7 +44,7 @@ if (isBrowser) {
         --color-border-selected: rgba(0, 0, 0, 0.3);
         --color-icon-selected: rgba(0, 0, 0, 0.8);
 
-        --color-status-neutral: rgba(0, 0, 0, 0.5);
+        --color-status-neutral: #000000;
       }
     }
   `;

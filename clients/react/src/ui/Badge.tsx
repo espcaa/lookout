@@ -21,9 +21,9 @@ export function Badge({ status, variant = "overlay", size = "sm" }: BadgeProps) 
     <span style={{
       ...sizeStyles[size],
       fontWeight: fontWeight.semibold,
-      color: "#fff", // Keeping text white since background is usually a colorful status pill
+      color: "#fff", // Keeping text white since background is usually a colorful status pill or dark neutral pill
       borderRadius: 999,
-      background: config.color.startsWith("#") ? config.color : "var(--color-bg-surface)",
+      background: config.color,
       ...(isOverlay ? { boxShadow: `0 0 0 1px rgba(0,0,0,0.1)` } : {}),
     }}>
       {config.label}
