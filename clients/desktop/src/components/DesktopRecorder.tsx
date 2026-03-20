@@ -18,6 +18,7 @@ import {
   radii,
 } from "@collapse/react";
 import { getReport } from "../logger.js";
+import { NamingModal } from "./NamingModal.js";
 import { useNativeCapture } from "../hooks/useNativeCapture.js";
 import type { CaptureSource } from "../hooks/useNativeCapture.js";
 import { useScreenPreview } from "../hooks/useScreenPreview.js";

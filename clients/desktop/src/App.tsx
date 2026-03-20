@@ -159,16 +159,25 @@ export function App() {
 
     let effectsApplied = false;
     
-    invoke("enable_vibrancy")
-      .then(() => {
-        effectsApplied = true;
-        html.style.background = "transparent";
-        body.style.background = "transparent";
-        if (root) root.style.background = "transparent";
-      })
-      .catch((err) => {
-        console.warn("Failed to enable vibrancy", err);
-      });
+    const isLinux = navigator.userAgent.toLowerCase().includes("linux");
+    if (!isLinux) {
+      invoke("enable_vibrancy")
+        .then(() => {
+          effectsApplied = true;
+          html.style.background = "transparent";
+          body.style.background = "transparent";
+          if (root) root.style.background = "transparent";
+        })
+        .catch((err) => {
+          console.warn("Failed to enable vibrancy", err);
+        });
+    } else {
+      console.log("[vibrancy] skipped on Linux");
+      // Explicitly set opaque background on Linux to override any default transparent styling
+      html.style.background = "var(--color-bg-body)";
+      body.style.background = "var(--color-bg-body)";
+      if (root) root.style.background = "var(--color-bg-body)";
+    }
 
     return () => {
       if (effectsApplied) {
