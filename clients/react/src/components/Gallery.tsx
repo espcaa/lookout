@@ -17,9 +17,7 @@ export interface GalleryProps {
 }
 
 const addButtonStyle: React.CSSProperties = {
-  background: colors.bg.surface,
-  border: `1px solid ${colors.border.default}`,
-  borderRadius: radii.lg,
+  borderRadius: radii.md,
   fontSize: fontSize.xxl,
   width: 36,
   height: 36,
@@ -31,7 +29,7 @@ function GalleryHeader({ onAdd }: { onAdd?: () => void }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: spacing.lg, paddingBottom: 0, flexShrink: 0 }}>
       <h2 style={{ fontSize: fontSize.heading, fontWeight: fontWeight.bold, color: colors.text.primary, margin: 0 }}>Your Timelapses</h2>
       {onAdd && (
-        <Button variant="secondary" size="sm" onClick={onAdd} title="Add session" style={addButtonStyle}>
+        <Button variant="ghost" size="sm" onClick={onAdd} title="Add session" style={addButtonStyle}>
           +
         </Button>
       )}

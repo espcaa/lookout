@@ -211,41 +211,45 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
               )}
             </AnimatePresence>
 
-            {showHoverPreview && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.7 }}
-                style={{
-                  position: "absolute",
-                  right: spacing.md,
-                  top: spacing.xl,
-                  width: 240,
-                  maxHeight: 180,
-                  aspectRatio: String(hoverAspectRatio),
-                  borderRadius: radii.md,
-                  overflow: "hidden",
-                  background: colors.bg.surface,
-                  border: `1px solid ${colors.border.default}`,
-                  boxShadow: "0 10px 30px rgba(0,0,0,0.22)",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              >
-                {hoverPreviewUrl ? (
-                  <motion.img
-                    src={hoverPreviewUrl}
-                    alt="Window hover preview"
-                    layoutId={hoveredHandoffLayoutId}
-                    style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
-                  />
-                ) : (
-                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <p style={{ fontSize: fontSize.xs, color: colors.text.tertiary }}>Loading preview...</p>
-                  </div>
-                )}
-              </motion.div>
-            )}
+            <AnimatePresence>
+              {showHoverPreview && (
+                <motion.div
+                  key={hoveredWindow ? `hover-${hoveredWindow.id}` : "hover-empty"}
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.7 }}
+                  style={{
+                    position: "absolute",
+                    right: spacing.md,
+                    top: spacing.xl,
+                    width: 240,
+                    maxHeight: 180,
+                    aspectRatio: String(hoverAspectRatio),
+                    borderRadius: radii.md,
+                    overflow: "hidden",
+                    background: colors.bg.surface,
+                    border: `1px solid ${colors.border.default}`,
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.22)",
+                    pointerEvents: "none",
+                    zIndex: 2,
+                  }}
+                >
+                  {hoverPreviewUrl ? (
+                    <motion.img
+                      src={hoverPreviewUrl}
+                      alt="Window hover preview"
+                      layoutId={hoveredHandoffLayoutId}
+                      style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                    />
+                  ) : (
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <p style={{ fontSize: fontSize.xs, color: colors.text.tertiary }}>Loading preview...</p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </LayoutGroup>
         </div>
 

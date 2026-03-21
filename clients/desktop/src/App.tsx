@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { invoke } from "./logger.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Gallery,
   SessionDetail,
@@ -281,6 +282,25 @@ export function App() {
     content
   );
 
+  const prevRouteRef = React.useRef(route);
+  const routeDirection = React.useMemo(() => {
+    const prev = prevRouteRef.current;
+    const prevPage = prev.page;
+    const nextPage = route.page;
+
+    if (prevPage === "gallery" && nextPage !== "gallery") return 1;
+    if (prevPage !== "gallery" && nextPage === "gallery") return -1;
+    if (prevPage === "record" && nextPage === "session") return 1;
+    if (prevPage === "session" && nextPage === "record") return -1;
+    return 1;
+  }, [route]);
+
+  useEffect(() => {
+    prevRouteRef.current = route;
+  }, [route]);
+
+  const routeKey = `${route.page}:${(route as { token?: string }).token ?? ""}`;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* Draggable Titlebar Area that dodges the traffic lights (macOS only) */}
@@ -293,11 +313,47 @@ export function App() {
       )}
       <div style={{
         flex: 1,
-        overflowY: route.page === "gallery" ? "hidden" : "auto",
+        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
+        position: "relative",
       }}>
-        {mainView}
+        <AnimatePresence mode="sync" initial={false} custom={routeDirection}>
+          <motion.div
+            key={routeKey}
+            custom={routeDirection}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            variants={{
+              enter: (direction: number) => ({ opacity: 0, x: direction > 0 ? 14 : -14 }),
+              center: {
+                opacity: 1,
+                x: 0,
+                transition: {
+                  x: { type: "spring", stiffness: 460, damping: 36, mass: 0.7 },
+                  opacity: { duration: 0.16, delay: 0.04, ease: "easeOut" },
+                },
+              },
+              exit: (direction: number) => ({
+                opacity: 0,
+                x: direction > 0 ? -14 : 14,
+                transition: {
+                  x: { type: "spring", stiffness: 460, damping: 36, mass: 0.7 },
+                  opacity: { duration: 0.14, ease: "easeOut" },
+                },
+              }),
+            }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              height: "100%",
+              overflowY: route.page === "gallery" ? "hidden" : "auto",
+            }}
+          >
+            {mainView}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

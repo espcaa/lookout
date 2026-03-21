@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   CollapseProvider,
   CollapseRecorder,
@@ -31,52 +32,107 @@ export function App() {
     }
   }, []);
 
-  switch (route.page) {
-    case "gallery":
-      return (
-        <Gallery
-          sessions={gallery.sessions}
-          loading={gallery.loading}
-          error={gallery.error}
-          onSessionClick={(token) => {
-            navigate({ page: "session", token });
-          }}
-          onArchive={(token) => {
-            tokenStore.archiveToken(token);
-            gallery.refresh();
-          }}
-          onRefresh={gallery.refresh}
-        />
-      );
+  const content = (() => {
+    switch (route.page) {
+      case "gallery":
+        return (
+          <Gallery
+            sessions={gallery.sessions}
+            loading={gallery.loading}
+            error={gallery.error}
+            onSessionClick={(token) => {
+              navigate({ page: "session", token });
+            }}
+            onArchive={(token) => {
+              tokenStore.archiveToken(token);
+              gallery.refresh();
+            }}
+            onRefresh={gallery.refresh}
+          />
+        );
 
-    case "record":
-      return (
-        <CollapseProvider token={route.token} apiBaseUrl={API_BASE}>
-          <div style={{ maxWidth: 640, margin: "0 auto", padding: 16 }}>
-            <button
-              onClick={() => navigate({ page: "gallery" })}
-              style={backBtnStyle}
-            >
-              &larr; Gallery
-            </button>
-            <CollapseRecorder />
-          </div>
-        </CollapseProvider>
-      );
+      case "record":
+        return (
+          <CollapseProvider token={route.token} apiBaseUrl={API_BASE}>
+            <div style={{ maxWidth: 640, margin: "0 auto", padding: 16 }}>
+              <button
+                onClick={() => navigate({ page: "gallery" })}
+                style={backBtnStyle}
+              >
+                &larr; Gallery
+              </button>
+              <CollapseRecorder />
+            </div>
+          </CollapseProvider>
+        );
 
-    case "session":
-      return (
-        <SessionDetail
-          token={route.token}
-          apiBaseUrl={API_BASE}
-          onBack={() => navigate({ page: "gallery" })}
-          onArchive={() => {
-            tokenStore.archiveToken(route.token);
-            navigate({ page: "gallery" });
+      case "session":
+        return (
+          <SessionDetail
+            token={route.token}
+            apiBaseUrl={API_BASE}
+            onBack={() => navigate({ page: "gallery" })}
+            onArchive={() => {
+              tokenStore.archiveToken(route.token);
+              navigate({ page: "gallery" });
+            }}
+          />
+        );
+    }
+  })();
+
+  const prevRouteRef = React.useRef(route);
+  const routeDirection = React.useMemo(() => {
+    const prevPage = prevRouteRef.current.page;
+    const nextPage = route.page;
+    if (prevPage === "gallery" && nextPage !== "gallery") return 1;
+    if (prevPage !== "gallery" && nextPage === "gallery") return -1;
+    if (prevPage === "record" && nextPage === "session") return 1;
+    if (prevPage === "session" && nextPage === "record") return -1;
+    return 1;
+  }, [route]);
+
+  useEffect(() => {
+    prevRouteRef.current = route;
+  }, [route]);
+
+  const routeKey = `${route.page}:${("token" in route ? route.token : "")}`;
+
+  return (
+    <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}>
+      <AnimatePresence mode="sync" initial={false} custom={routeDirection}>
+        <motion.div
+          key={routeKey}
+          custom={routeDirection}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          variants={{
+            enter: (direction: number) => ({ opacity: 0, x: direction > 0 ? 14 : -14 }),
+            center: {
+              opacity: 1,
+              x: 0,
+              transition: {
+                x: { type: "spring", stiffness: 460, damping: 36, mass: 0.7 },
+                opacity: { duration: 0.16, delay: 0.04, ease: "easeOut" },
+              },
+            },
+            exit: (direction: number) => ({
+              opacity: 0,
+              x: direction > 0 ? -14 : 14,
+              transition: {
+                x: { type: "spring", stiffness: 460, damping: 36, mass: 0.7 },
+                opacity: { duration: 0.14, ease: "easeOut" },
+              },
+            }),
           }}
-        />
-      );
-  }
+          style={{ position: "absolute", inset: 0, minHeight: "100vh" }}
+        >
+          {content}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
 }
 
 const backBtnStyle: React.CSSProperties = {

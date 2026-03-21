@@ -32,6 +32,7 @@ interface DesktopRecorderProps {
 const API_BASE = "https://collapse.b.selfhosted.hackclub.com";
 
 export function DesktopRecorder({ token, source, onChangeSource, onBack, onViewSession }: DesktopRecorderProps) {
+  const isMacOS = navigator.userAgent.includes("Mac");
   const session = useSession();
   const capture = useNativeCapture(token, API_BASE, source);
   // Live preview runs until first capture arrives, then the captured frame takes over
@@ -166,7 +167,7 @@ export function DesktopRecorder({ token, source, onChangeSource, onBack, onViewS
           variant="page"
           title="Session Error"
           error={session.error || "Unknown error"}
-          action={{ label: "\u2190 Gallery", onClick: onBack }}
+          action={{ label: isMacOS ? "\u2190 Gallery" : "Back to Gallery", onClick: onBack }}
         />
       </PageContainer>
     );
@@ -224,8 +225,11 @@ export function DesktopRecorder({ token, source, onChangeSource, onBack, onViewS
             }} />
           )}
           {controlMode === "paused" && (
-            <span style={{ fontSize: fontSize.md, color: colors.text.tertiary, flexShrink: 0, lineHeight: 1 }}>
-              ⏸︎
+            <span style={{ color: colors.text.tertiary, flexShrink: 0, lineHeight: 1, display: "inline-flex", alignItems: "center" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <rect x="7" y="5" width="4" height="14" rx="1" />
+                <rect x="13" y="5" width="4" height="14" rx="1" />
+              </svg>
             </span>
           )}
           <span style={{

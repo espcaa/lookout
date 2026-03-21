@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import { motion } from "motion/react";
 import { Button, Card, colors, spacing, radii, fontSize, fontWeight } from "@collapse/react";
 
 interface NamingModalProps {
@@ -23,7 +24,16 @@ export function NamingModal({ loading, onConfirm, onResume }: NamingModalProps) 
       display: "flex", alignItems: "center", justifyContent: "center",
       zIndex: 9999, padding: spacing.xl,
     }}>
-      <Card padding={spacing.xxl} style={{ width: "100%", maxWidth: 400, height: "auto", background: "var(--color-bg-panel)", textAlign: "center", boxShadow: "0 10px 40px rgba(0,0,0,0.5)" }}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          y: { type: "spring", stiffness: 420, damping: 34, mass: 0.7 },
+          opacity: { duration: 0.16, ease: "easeOut" },
+        }}
+        style={{ width: "100%", maxWidth: 400 }}
+      >
+        <Card padding={spacing.xxl} style={{ width: "100%", height: "auto", background: "var(--color-bg-panel)", textAlign: "center", boxShadow: "0 10px 40px rgba(0,0,0,0.5)" }}>
         <h3 style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary, margin: 0, marginBottom: spacing.sm }}>
           Name your timelapse
         </h3>
@@ -77,7 +87,8 @@ export function NamingModal({ loading, onConfirm, onResume }: NamingModalProps) 
             Resume
           </Button>
         </div>
-      </Card>
+        </Card>
+      </motion.div>
     </div>
   );
 }

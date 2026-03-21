@@ -4,7 +4,11 @@ if (typeof document !== "undefined" && !document.querySelector("style[data-colla
   const style = document.createElement("style");
   style.setAttribute("data-collapse-theme", "");
   style.textContent = `
+    *, *::before, *::after, b, strong, i, em {
+      font-family: inherit;
+    }
     :root {
+      font-family: "SF Pro", "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Geist", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       /* Dark theme (default/fallback) */
       --color-bg-body: #000000;
       --color-bg-panel: #111111;

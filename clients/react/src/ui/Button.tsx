@@ -39,9 +39,16 @@ export function Button({
   
   // Extract presentation styles to apply to the inner div so they don't get overridden or ignored
   const { background, border, borderRadius, color, ...outerStyle } = (style as React.CSSProperties) || {};
+  const idleBackground = background ?? variantStyles[variant].background;
+  const idleBorder = border ?? variantStyles[variant].border;
+  const hoverBackground =
+    background ?? (variant === "ghost" ? colors.bg.selected : variant === "secondary" ? colors.bg.surface : variantStyles[variant].background);
+  const hoverBorder =
+    border ?? (variant === "ghost" ? "1px solid transparent" : variantStyles[variant].border);
 
   return (
     <motion.button
+      whileHover={isDisabled ? undefined : "hover"}
       whileTap={isDisabled ? undefined : "active"}
       initial="idle"
       disabled={isDisabled}
@@ -65,16 +72,17 @@ export function Button({
     >
       <motion.div
         variants={{
-          idle: { scale: 1 },
-          active: { scale: 0.96 }
+          idle: { scale: 1, background: idleBackground, border: idleBorder },
+          hover: { scale: 1, background: hoverBackground, border: hoverBorder },
+          active: { scale: 0.96, background: hoverBackground, border: hoverBorder },
         }}
         transition={{ type: "spring", stiffness: 1500, damping: 60 }}
         style={{
           position: "absolute",
           inset: -1,
           borderRadius: borderRadius ?? radii.md,
-          background: background ?? variantStyles[variant].background,
-          border: border ?? variantStyles[variant].border,
+          background: idleBackground,
+          border: idleBorder,
           transition: "opacity 0.15s, background 0.15s, border-color 0.15s",
         }}
       />

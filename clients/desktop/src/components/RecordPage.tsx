@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   CollapseProvider,
   Button,
@@ -22,7 +23,9 @@ interface RecordPageProps {
 }
 
 export function RecordPage({ token, onBack, onViewSession }: RecordPageProps) {
+  const isMacOS = navigator.userAgent.includes("Mac");
   const [captureSource, setCaptureSource] = useState<CaptureSource | null>(null);
+  const [captureFlowDirection, setCaptureFlowDirection] = useState(1);
   const [stopping, setStopping] = useState(false);
   const [sessionCheck, setSessionCheck] = useState<"loading" | "ok" | "finished" | "error">("loading");
   const [sessionStatus, setSessionStatus] = useState<string | null>(null);
@@ -89,6 +92,16 @@ export function RecordPage({ token, onBack, onViewSession }: RecordPageProps) {
     setIsPrompting(false);
   }, []);
 
+  const handleSelectSource = useCallback((source: CaptureSource) => {
+    setCaptureFlowDirection(1);
+    setCaptureSource(source);
+  }, []);
+
+  const handleChangeSource = useCallback(() => {
+    setCaptureFlowDirection(-1);
+    setCaptureSource(null);
+  }, []);
+
   // Loading skeleton that matches the SourcePicker layout
   if (sessionCheck === "loading") {
     return (
@@ -147,45 +160,110 @@ export function RecordPage({ token, onBack, onViewSession }: RecordPageProps) {
     );
   }
 
-  if (!captureSource) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <div style={{ maxWidth: 480, margin: "0 auto", padding: spacing.lg, paddingBottom: 0, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0, width: "100%", boxSizing: "border-box" }}>
-          <Button variant="secondary" size="sm" onClick={onBack} style={cardButtonStyle}>
-            &larr; Gallery
-          </Button>
-          {sessionStatus !== "pending" && (
-            <Button variant="danger" size="md" loading={stopping} onClick={handleStopClick}>
-              Stop Session
-            </Button>
-          )}
-        </div>
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <SourcePicker
-            onSelect={setCaptureSource}
-            submitLabel={sessionStatus === "active" || sessionStatus === "paused" ? "Resume Session" : "Start Capture"}
-          />
-        </div>
-        {isPrompting && (
-          <NamingModal
-            loading={stopping}
-            onConfirm={handleConfirmStop}
-            onResume={handleResumeFromModal}
-          />
-        )}
-      </div>
-    );
-  }
-
   return (
-    <CollapseProvider token={token} apiBaseUrl={API_BASE}>
-      <DesktopRecorder
-        token={token}
-        source={captureSource}
-        onChangeSource={() => setCaptureSource(null)}
-        onBack={onBack}
-        onViewSession={onViewSession}
-      />
-    </CollapseProvider>
+    <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
+      <AnimatePresence mode="sync" initial={false} custom={captureFlowDirection}>
+        {!captureSource ? (
+          <motion.div
+            key="source-picker"
+            custom={captureFlowDirection}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            variants={{
+              enter: (direction: number) => ({ opacity: 0, x: direction > 0 ? 14 : -14 }),
+              center: {
+                opacity: 1,
+                x: 0,
+                transition: {
+                  x: { type: "spring", stiffness: 460, damping: 36, mass: 0.7 },
+                  opacity: { duration: 0.16, delay: 0.04, ease: "easeOut" },
+                },
+              },
+              exit: (direction: number) => ({
+                opacity: 0,
+                x: direction > 0 ? -14 : 14,
+                transition: {
+                  x: { type: "spring", stiffness: 460, damping: 36, mass: 0.7 },
+                  opacity: { duration: 0.14, ease: "easeOut" },
+                },
+              }),
+            }}
+            style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", height: "100%" }}
+          >
+            <div style={{ maxWidth: 480, margin: "0 auto", padding: spacing.lg, paddingBottom: 0, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0, width: "100%", boxSizing: "border-box" }}>
+              <Button variant="secondary" size="sm" onClick={onBack} style={cardButtonStyle}>
+                {isMacOS ? (
+                  <span>&larr; Gallery</span>
+                ) : (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: spacing.xs }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                    <span>Gallery</span>
+                  </span>
+                )}
+              </Button>
+              {sessionStatus !== "pending" && (
+                <Button variant="danger" size="md" loading={stopping} onClick={handleStopClick}>
+                  Stop Session
+                </Button>
+              )}
+            </div>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <SourcePicker
+                onSelect={handleSelectSource}
+                submitLabel={sessionStatus === "active" || sessionStatus === "paused" ? "Resume Session" : "Start Capture"}
+              />
+            </div>
+            {isPrompting && (
+              <NamingModal
+                loading={stopping}
+                onConfirm={handleConfirmStop}
+                onResume={handleResumeFromModal}
+              />
+            )}
+          </motion.div>
+        ) : (
+          <motion.div
+            key={`recorder:${captureSource.type}:${captureSource.id}`}
+            custom={captureFlowDirection}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            variants={{
+              enter: (direction: number) => ({ opacity: 0, x: direction > 0 ? 14 : -14 }),
+              center: {
+                opacity: 1,
+                x: 0,
+                transition: {
+                  x: { type: "spring", stiffness: 460, damping: 36, mass: 0.7 },
+                  opacity: { duration: 0.16, delay: 0.04, ease: "easeOut" },
+                },
+              },
+              exit: (direction: number) => ({
+                opacity: 0,
+                x: direction > 0 ? -14 : 14,
+                transition: {
+                  x: { type: "spring", stiffness: 460, damping: 36, mass: 0.7 },
+                  opacity: { duration: 0.14, ease: "easeOut" },
+                },
+              }),
+            }}
+            style={{ position: "absolute", inset: 0, height: "100%" }}
+          >
+            <CollapseProvider token={token} apiBaseUrl={API_BASE}>
+              <DesktopRecorder
+                token={token}
+                source={captureSource}
+                onChangeSource={handleChangeSource}
+                onBack={onBack}
+                onViewSession={onViewSession}
+              />
+            </CollapseProvider>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

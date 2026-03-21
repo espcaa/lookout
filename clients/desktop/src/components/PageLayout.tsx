@@ -31,6 +31,8 @@ interface PageLayoutProps {
 }
 
 export function PageLayout({ onBack, icon, title, subtitle, hint, actions, children }: PageLayoutProps) {
+  const isMacOS = navigator.userAgent.includes("Mac");
+
   return (
     <div style={{
       display: "flex", flexDirection: "column", height: "100%",
@@ -40,7 +42,16 @@ export function PageLayout({ onBack, icon, title, subtitle, hint, actions, child
       {onBack && (
         <div style={{ flexShrink: 0 }}>
           <Button variant="secondary" size="sm" onClick={onBack} style={cardButtonStyle}>
-            &larr; Back
+            {isMacOS ? (
+              <span>&larr; Back</span>
+            ) : (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: spacing.xs }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+                <span>Back</span>
+              </span>
+            )}
           </Button>
         </div>
       )}
