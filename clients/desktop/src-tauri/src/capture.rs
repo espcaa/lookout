@@ -175,9 +175,16 @@ pub fn take_stitched_screenshots(
     let mut dynamic = DynamicImage::ImageRgba8(stitched);
 
     // Scale down if needed (preserving aspect ratio)
+    // We only enforce that the HEIGHT does not exceed max_height,
+    // and that NO SINGLE INDIVIDUAL SCREEN exceeds max_width (we check total_w against max_width * num_sources)
     let (w, h) = (dynamic.width(), dynamic.height());
-    if w > max_width || h > max_height {
-        let scale = f64::min(max_width as f64 / w as f64, max_height as f64 / h as f64);
+    let effective_max_width = max_width * (sources.len() as u32);
+
+    if w > effective_max_width || h > max_height {
+        let scale = f64::min(
+            effective_max_width as f64 / w as f64,
+            max_height as f64 / h as f64,
+        );
         let new_w = (w as f64 * scale).round() as u32;
         let new_h = (h as f64 * scale).round() as u32;
         dynamic = dynamic.resize_exact(new_w, new_h, image::imageops::FilterType::Lanczos3);

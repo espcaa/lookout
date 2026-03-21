@@ -132,11 +132,17 @@ fn should_exclude_window(app_name: &str, title: &str) -> bool {
         "dock",
         "control centre",
         "control center",
+        "notification centre",
         "notification center",
         "window server",
         "systemuiserver",
         "spotlight",
         "loginwindow",
+        "finder",
+        "screencapture",
+        "screenshot",
+        "windows explorer",
+        "raycast",
     ];
 
     const EXCLUDED_TITLES: &[&str] = &["statusindicator", "item-0", "item-1"];
