@@ -511,8 +511,34 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
               <p style={{ color: colors.text.secondary, textAlign: "center", fontSize: fontSize.md }}>
                 Wayland requires explicit permission to capture screens or windows.
               </p>
+              
+              {selected.filter(s => s.type === "pipewire").length > 0 && (
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: spacing.xs, margin: `${spacing.sm}px 0` }}>
+                  {selected.filter(s => s.type === "pipewire").map((src, i) => (
+                    <div key={src.id} style={{
+                      display: "flex", alignItems: "center", gap: spacing.md,
+                      padding: `${spacing.md}px ${spacing.md}px`, background: colors.bg.selected,
+                      border: `1px solid ${colors.border.selected}`,
+                      borderRadius: radii.md,
+                      width: "100%"
+                    }}>
+                      <div style={{
+                        width: 18, height: 18, borderRadius: "50%",
+                        border: `2px solid ${colors.icon.selected}`,
+                        flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.icon.selected }} />
+                      </div>
+                      <span style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary }}>
+                        Cast Stream {i + 1}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <Button variant="secondary" size="md" onClick={handleAddCast}>
-                + Add new Screen/Window
+                {selected.some(s => s.type === "pipewire") ? "Select new sets of windows" : "+ Add new Screen/Window"}
               </Button>
             </div>
           )}
