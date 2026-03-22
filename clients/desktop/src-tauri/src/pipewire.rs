@@ -8,7 +8,7 @@ pub fn capture_pipewire_node(
     gstreamer::init().map_err(|e| format!("Failed to init gstreamer: {}", e))?;
 
     let pipeline_str = format!(
-        "pipewiresrc fd={} path={} ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink max-buffers=1 drop=true",
+        "pipewiresrc fd={} path={} ! videoconvert ! video/x-raw,format=RGBA ! appsink name=sink max-buffers=1 drop=true",
         fd, node_id
     );
 
@@ -57,8 +57,8 @@ pub fn capture_pipewire_node(
         .map_readable()
         .map_err(|_| "Failed to map buffer".to_string())?;
 
-    let img = image::RgbImage::from_raw(width as u32, height as u32, map.as_slice().to_vec())
+    let img = image::RgbaImage::from_raw(width as u32, height as u32, map.as_slice().to_vec())
         .ok_or_else(|| "Failed to create image from raw bytes".to_string())?;
 
-    Ok(image::DynamicImage::ImageRgb8(img))
+    Ok(image::DynamicImage::ImageRgba8(img))
 }
