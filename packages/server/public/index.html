@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lookout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        color: #1d1d1f;
+        background: #fff;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        background: rgba(255, 255, 255, 0.72);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      }
+
+      nav .inner {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 0 24px;
+        height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      nav .name {
+        font-weight: 700;
+        font-size: 17px;
+        letter-spacing: -0.02em;
+      }
+
+      nav .right {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      nav .gh {
+        font-size: 14px;
+        font-weight: 500;
+        color: #6e6e73;
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+
+      nav .gh:hover {
+        color: #1d1d1f;
+      }
+
+      nav .dl {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        background: #1d1d1f;
+        padding: 8px 20px;
+        border-radius: 100px;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+
+      nav .dl:hover {
+        background: #000;
+      }
+
+      #nav-dl {
+        display: flex;
+        gap: 8px;
+      }
+
+      main {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 100px 24px 60px;
+      }
+
+      .content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+      }
+
+      .icon {
+        width: 128px;
+        height: 128px;
+        border-radius: 22.37%;
+        margin-bottom: 28px;
+      }
+
+      h1 {
+        font-size: 40px;
+        font-weight: 700;
+        letter-spacing: -0.035em;
+        margin-bottom: 6px;
+      }
+
+      .version {
+        font-size: 13px;
+        color: #86868b;
+        font-weight: 500;
+        margin-bottom: 12px;
+      }
+
+      p {
+        font-size: 17px;
+        color: #6e6e73;
+        line-height: 1.5;
+        max-width: 380px;
+        margin-bottom: 36px;
+      }
+
+      .dl-main {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        background: #1d1d1f;
+        padding: 14px 36px;
+        border-radius: 100px;
+        text-decoration: none;
+        transition:
+          background 0.2s,
+          transform 0.2s;
+      }
+
+      .dl-main:hover {
+        background: #000;
+        transform: scale(1.03);
+      }
+
+      .dl-main svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .dl-sub {
+        font-size: 13px;
+        color: #86868b;
+        margin-top: 12px;
+      }
+
+      .dl-sub a {
+        color: #6e6e73;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      .dl-sub a:hover {
+        color: #1d1d1f;
+      }
+
+      .dl-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <div class="inner">
+        <div class="name">Lookout</div>
+        <div class="right">
+          <a href="https://github.com/hackclub/lookout" class="gh">GitHub</a>
+          <div id="nav-dl">
+            <a href="https://github.com/hackclub/lookout/releases" class="dl">Download</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      <div class="content">
+        <img
+          src="/icon.png"
+          alt="Lookout"
+          class="icon"
+        />
+        <h1>Lookout</h1>
+        <div id="version" class="version"></div>
+        <p>Simple time-lapsing for Hack Club programsI</p>
+        <div id="dl-buttons" class="dl-buttons">
+          <a id="dl-btn" href="https://github.com/hackclub/lookout/releases" class="dl-main">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span id="dl-label">Download</span>
+          </a>
+        </div>
+        <div id="dl-other" class="dl-sub"></div>
+      </div>
+    </main>
+
+    <script>
+      (async () => {
+        const REPO = "hackclub/lookout";
+        const fallback = `https://github.com/${REPO}/releases`;
+
+        // Detect OS
+        const ua = navigator.userAgent;
+        let os = "unknown";
+        if (/Mac/i.test(ua)) os = "mac";
+        else if (/Win/i.test(ua)) os = "windows";
+        else if (/Linux/i.test(ua)) os = "linux";
+
+        const osLabels = {
+          mac: "macOS",
+          windows: "Windows",
+          linux: "Linux",
+        };
+
+        const btn = document.getElementById("dl-btn");
+        const label = document.getElementById("dl-label");
+        const navDl = document.getElementById("nav-dl");
+        const otherEl = document.getElementById("dl-other");
+
+        const dlIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+
+        const makeMainButton = (href, text) =>
+          `<a href="${href}" class="dl-main">${dlIcon}<span>${text}</span></a>`;
+
+        const makeNavButton = (href, text) =>
+          `<a href="${href}" class="dl">${text}</a>`;
+
+        try {
+          const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=1`);
+          if (!res.ok) throw new Error();
+          const [release] = await res.json();
+          if (!release) throw new Error();
+
+          const v = release.tag_name;
+          const assets = release.assets || [];
+          const find = (pat) => assets.find((a) => pat.test(a.name));
+
+          // Show version under title
+          document.getElementById("version").textContent = v;
+
+          if (os === "mac") {
+            const dmg = find(/\.dmg$/);
+            if (dmg) {
+              btn.href = dmg.browser_download_url;
+              label.textContent = "Download for macOS";
+              navDl.innerHTML = makeNavButton(dmg.browser_download_url, "Download");
+            }
+          } else if (os === "windows") {
+            const x64 = find(/x64-setup\.exe$/);
+            const arm = find(/arm64-setup\.exe$/);
+            const mainButtons = [];
+            const navButtons = [];
+            if (x64) {
+              mainButtons.push(makeMainButton(x64.browser_download_url, "Download for Windows (x64)"));
+              navButtons.push(makeNavButton(x64.browser_download_url, "Download (x64)"));
+            }
+            if (arm) {
+              mainButtons.push(makeMainButton(arm.browser_download_url, "Download for Windows (ARM)"));
+              navButtons.push(makeNavButton(arm.browser_download_url, "Download (ARM)"));
+            }
+            if (mainButtons.length) {
+              document.getElementById("dl-buttons").innerHTML = mainButtons.join("");
+            }
+            if (navButtons.length) {
+              navDl.innerHTML = navButtons.join("");
+            }
+          } else if (os === "linux") {
+            label.textContent = "Download for Linux";
+          }
+        } catch (e) {
+          // Fallback: buttons already link to releases page
+          if (os !== "unknown") {
+            label.textContent = `Download for ${osLabels[os]}`;
+          }
+        }
+
+        // Show other platforms — always link to releases page
+        const others = ["mac", "windows", "linux"]
+          .filter((k) => k !== os)
+          .map((k) => `<a href="${fallback}">${osLabels[k]}</a>`);
+
+        if (others.length) {
+          otherEl.innerHTML = `Also available for ${others.join(", ")}`;
+        }
+      })();
+    </script>
+  </body>
+</html>
