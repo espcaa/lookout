@@ -39,10 +39,12 @@ const r2Client = new S3Client({
 const R2_BUCKET = process.env.R2_BUCKET_NAME || "collapse";
 const R2_PUBLIC_DOMAIN = process.env.R2_PUBLIC_DOMAIN || "";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Shared video filter: scale to 1920x1080 with pillarboxing. */
-const SCALE_FILTER = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2";
+const SCALE_FILTER =
+  "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2";
 
 /** Verify a video file with ffprobe: check file size > 0 and frame count within tolerance. */
 async function verifyVideo(
@@ -52,24 +54,30 @@ async function verifyVideo(
   label: string,
 ): Promise<number> {
   const stat = await fs.stat(filePath);
-  if (stat.size === 0) throw new Error(`${label}: ffmpeg produced empty output`);
+  if (stat.size === 0)
+    throw new Error(`${label}: ffmpeg produced empty output`);
 
-  const { stdout: frameCountStr } = await execFileAsync("ffprobe", [
-    "-v", "error",
-    "-count_frames",
-    "-select_streams", "v:0",
-    "-show_entries", "stream=nb_read_frames",
-    "-of", "csv=p=0",
-    filePath,
-  ], { timeout: 30_000 });
+  const { stdout: frameCountStr } = await execFileAsync(
+    "ffprobe",
+    [
+      "-v",
+      "error",
+      "-count_frames",
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "stream=nb_read_frames",
+      "-of",
+      "csv=p=0",
+      filePath,
+    ],
+    { timeout: 30_000 },
+  );
 
   const frameCount = parseInt(frameCountStr.trim(), 10);
   const expectedFrames = expectedInputFrames * outputFps;
   const tolerance = Math.max(outputFps, Math.round(expectedFrames * 0.02));
-  if (
-    isNaN(frameCount) ||
-    Math.abs(frameCount - expectedFrames) > tolerance
-  ) {
+  if (isNaN(frameCount) || Math.abs(frameCount - expectedFrames) > tolerance) {
     throw new Error(
       `${label}: frame count mismatch: expected ~${expectedFrames} (±${tolerance}), got ${frameCount}`,
     );
@@ -130,11 +138,18 @@ export async function compileTimelapse(sessionId: string): Promise<{
   const [claimed] = await db
     .update(schema.sessions)
     .set({ status: "compiling", updatedAt: new Date() })
-    .where(and(eq(schema.sessions.id, sessionId), sql`${schema.sessions.status} IN ('stopped', 'compiling')`))
+    .where(
+      and(
+        eq(schema.sessions.id, sessionId),
+        sql`${schema.sessions.status} IN ('stopped', 'compiling')`,
+      ),
+    )
     .returning({ id: schema.sessions.id });
 
   if (!claimed) {
-    throw new Error(`Session ${sessionId} cannot be compiled (status: ${session.status})`);
+    throw new Error(
+      `Session ${sessionId} cannot be compiled (status: ${session.status})`,
+    );
   }
 
   const tmpDir = `/tmp/compile-${sessionId}`;
@@ -161,12 +176,19 @@ export async function compileTimelapse(sessionId: string): Promise<{
     `);
 
     if (sampledScreenshots.rows.length === 0) {
-      // No screenshots — mark complete with no video
+      // No screenshots — mark failed (no video possible)
       await db
         .update(schema.sessions)
-        .set({ status: "complete", updatedAt: new Date() })
+        .set({ status: "failed", updatedAt: new Date() })
         .where(eq(schema.sessions.id, sessionId));
-      return { videoUrl: "", videoR2Key: "", videoWebmUrl: "", videoWebmR2Key: "", thumbnailUrl: "", thumbnailR2Key: "" };
+      return {
+        videoUrl: "",
+        videoR2Key: "",
+        videoWebmUrl: "",
+        videoWebmR2Key: "",
+        thumbnailUrl: "",
+        thumbnailR2Key: "",
+      };
     }
 
     // Mark sampled screenshots
@@ -203,31 +225,56 @@ export async function compileTimelapse(sessionId: string): Promise<{
 
     try {
       await Promise.all([
-        execFileAsync("ffmpeg", [
-          "-framerate", "1",
-          "-i", inputPattern,
-          "-c:v", "libx264",
-          "-preset", "medium",
-          "-crf", "23",
-          "-r", "30",
-          "-pix_fmt", "yuv420p",
-          "-movflags", "+faststart",
-          "-vf", SCALE_FILTER,
-          "-y",
-          mp4Path,
-        ], { timeout: 600_000, signal: mp4Abort.signal }),
-        execFileAsync("ffmpeg", [
-          "-framerate", "1",
-          "-i", inputPattern,
-          "-c:v", "libvpx",
-          "-crf", "10",
-          "-b:v", "1M",
-          "-r", "30",
-          "-pix_fmt", "yuv420p",
-          "-vf", SCALE_FILTER,
-          "-y",
-          webmPath,
-        ], { timeout: 600_000, signal: webmAbort.signal }),
+        execFileAsync(
+          "ffmpeg",
+          [
+            "-framerate",
+            "1",
+            "-i",
+            inputPattern,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "23",
+            "-r",
+            "30",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            "-vf",
+            SCALE_FILTER,
+            "-y",
+            mp4Path,
+          ],
+          { timeout: 600_000, signal: mp4Abort.signal },
+        ),
+        execFileAsync(
+          "ffmpeg",
+          [
+            "-framerate",
+            "1",
+            "-i",
+            inputPattern,
+            "-c:v",
+            "libvpx",
+            "-crf",
+            "10",
+            "-b:v",
+            "1M",
+            "-r",
+            "30",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            SCALE_FILTER,
+            "-y",
+            webmPath,
+          ],
+          { timeout: 600_000, signal: webmAbort.signal },
+        ),
       ]);
     } catch (err) {
       // Kill the surviving FFmpeg process to avoid wasting CPU
@@ -242,14 +289,22 @@ export async function compileTimelapse(sessionId: string): Promise<{
 
     // Step 4.5: Extract thumbnail from first frame
     const thumbnailPath = path.join(tmpDir, "thumbnail.jpg");
-    await execFileAsync("ffmpeg", [
-      "-i", mp4Path,
-      "-vframes", "1",
-      "-vf", "scale=480:-1",
-      "-q:v", "5",
-      "-y",
-      thumbnailPath,
-    ], { timeout: 30_000 });
+    await execFileAsync(
+      "ffmpeg",
+      [
+        "-i",
+        mp4Path,
+        "-vframes",
+        "1",
+        "-vf",
+        "scale=480:-1",
+        "-q:v",
+        "5",
+        "-y",
+        thumbnailPath,
+      ],
+      { timeout: 30_000 },
+    );
 
     // Step 5: Upload all artifacts to R2 and verify
     const thumbnailR2Key = `timelapses/${sessionId}/thumbnail.jpg`;
@@ -260,6 +315,7 @@ export async function compileTimelapse(sessionId: string): Promise<{
         Key: thumbnailR2Key,
         Body: thumbnailBytes,
         ContentType: "image/jpeg",
+        CacheControl: "public, max-age=31536000, immutable",
       }),
     );
 
@@ -267,7 +323,13 @@ export async function compileTimelapse(sessionId: string): Promise<{
     await uploadAndVerify(mp4Path, videoR2Key, "video/mp4", mp4Size, "MP4");
 
     const videoWebmR2Key = `timelapses/${sessionId}/timelapse.webm`;
-    await uploadAndVerify(webmPath, videoWebmR2Key, "video/webm", webmSize, "WebM");
+    await uploadAndVerify(
+      webmPath,
+      videoWebmR2Key,
+      "video/webm",
+      webmSize,
+      "WebM",
+    );
 
     // Step 6: Mark complete — only after BOTH formats are uploaded and verified
     const thumbnailUrl = R2_PUBLIC_DOMAIN
@@ -328,7 +390,14 @@ export async function compileTimelapse(sessionId: string): Promise<{
         ),
       );
 
-    return { videoUrl, videoR2Key, videoWebmUrl, videoWebmR2Key, thumbnailUrl, thumbnailR2Key };
+    return {
+      videoUrl,
+      videoR2Key,
+      videoWebmUrl,
+      videoWebmR2Key,
+      thumbnailUrl,
+      thumbnailR2Key,
+    };
   } finally {
     // Always clean up temp directory
     await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
