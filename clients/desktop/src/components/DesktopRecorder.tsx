@@ -20,7 +20,6 @@ import { useNativeCapture } from "../hooks/useNativeCapture.js";
 import type { CaptureSource } from "../hooks/useNativeCapture.js";
 import { useScreenPreview } from "../hooks/useScreenPreview.js";
 import { useCameraCapture, waitForVideoReady } from "../hooks/useCameraCapture.js";
-import { cardButtonStyle } from "./PageLayout.js";
 
 interface DesktopRecorderProps {
   token: string;
@@ -45,7 +44,7 @@ function RecorderPreviewItem({
 }) {
   const { previewUrl: livePreviewUrl } = useScreenPreview(
     isMain && captureUrl ? null : src,
-    2000
+    1
   );
   const previewUrl = (isMain ? captureUrl : null) || livePreviewUrl;
 
@@ -86,7 +85,7 @@ function RecorderPreviewItem({
   );
 }
 
-export function DesktopRecorder({ token, source, onChangeSource, onBack, onViewSession }: DesktopRecorderProps) {
+export function DesktopRecorder({ token, source, onChangeSource: _onChangeSource, onBack, onViewSession }: DesktopRecorderProps) {
   const isMacOS = navigator.userAgent.includes("Mac");
   const isCamera = source.length === 1 && source[0].type === "camera";
   const session = useSession();
