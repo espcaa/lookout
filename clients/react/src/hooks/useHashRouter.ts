@@ -43,6 +43,43 @@ export function useHashRouter() {
     return () => window.removeEventListener("hashchange", handler);
   }, []);
 
+  // Handle keyboard navigation (Escape or Backspace to go back)
+  useEffect(() => {
+    const keyHandler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape" || e.key === "Backspace") {
+        const currentRoute = parseHash(window.location.hash);
+        if (currentRoute.page !== "gallery") {
+          e.preventDefault();
+          // We use history.back() to match native backspace behavior 
+          // and preserve the history stack. If there is no history, 
+          // it safely does nothing, in which case we could fallback, 
+          // but window.history.back() works perfectly for hash routes.
+          window.history.back();
+          
+          // Fallback if history.back() didn't change the hash after a short delay
+          // (e.g. if this was the first page load and they somehow navigated to a subpage)
+          setTimeout(() => {
+            if (parseHash(window.location.hash).page !== "gallery") {
+              window.location.hash = "#/";
+            }
+          }, 50);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", keyHandler);
+    return () => window.removeEventListener("keydown", keyHandler);
+  }, []);
+
   const navigate = useCallback((r: Route) => {
     window.location.hash = routeToHash(r);
   }, []);
