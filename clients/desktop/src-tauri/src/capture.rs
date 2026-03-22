@@ -46,6 +46,12 @@ fn capture_to_dynamic_image(source: &CaptureSource) -> Result<DynamicImage, Stri
                     .map_err(|e| format!("Window capture failed: {e}"))?
             }
         }
+        CaptureSource::PipeWire { node_id } => {
+            return Err(format!(
+                "PipeWire capture not yet implemented (node: {})",
+                node_id
+            ));
+        }
     };
 
     Ok(DynamicImage::ImageRgba8(img))

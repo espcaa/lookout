@@ -1,6 +1,8 @@
 mod capture;
+mod screencast;
 
 #[cfg(target_os = "macos")]
+
 use std::ffi::c_void;
 #[cfg(target_os = "macos")]
 use objc2_core_foundation::{CFBoolean, CFDictionary, CFNumber, CFNumberType, CFString, CGRect};
@@ -92,6 +94,8 @@ pub enum CaptureSource {
     Monitor { id: u32 },
     #[serde(rename = "window")]
     Window { id: u32 },
+    #[serde(rename = "pipewire")]
+    PipeWire { node_id: u32 },
 }
 
 #[derive(Serialize)]
@@ -474,6 +478,23 @@ fn disable_vibrancy(window: tauri::Window) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn is_wayland() -> bool {
+    std::env::var("WAYLAND_DISPLAY").is_ok()
+}
+
+#[tauri::command]
+async fn request_screencast() -> Result<Vec<crate::screencast::StreamInfo>, String> {
+    #[cfg(target_os = "linux")]
+    {
+        crate::screencast::request_screencast().await
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Err("Screencast portal is only supported on Linux".into())
+    }
+}
+
 /// Initialize the session config so Rust knows where the server is.
 #[tauri::command]
 fn configure(
@@ -716,6 +737,7 @@ pub fn run() {
                 let source = match source_type {
                     "monitor" => crate::CaptureSource::Monitor { id: source_id },
                     "window" => crate::CaptureSource::Window { id: source_id },
+                    "pipewire" => crate::CaptureSource::PipeWire { node_id: source_id },
                     _ => {
                         responder.respond(http::Response::builder().status(400).body(Vec::new()).unwrap());
                         return;
@@ -794,6 +816,8 @@ pub fn run() {
             get_cold_start_urls,
             enable_vibrancy,
             disable_vibrancy,
+            is_wayland,
+            request_screencast,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

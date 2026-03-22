@@ -3,8 +3,8 @@ import { invoke } from "../logger.js";
 import { SCREENSHOT_INTERVAL_MS, MAX_WIDTH, MAX_HEIGHT, JPEG_QUALITY } from "@collapse/shared";
 
 export interface CaptureSource {
-  type: "monitor" | "window" | "camera";
-  id: number | string; // number for monitor/window, string (deviceId) for camera
+  type: "monitor" | "window" | "camera" | "pipewire";
+  id: number | string; // number for monitor/window/pipewire, string (deviceId) for camera
 }
 
 interface CaptureUploadResult {

@@ -50,7 +50,7 @@ function sourcesEqual(a: CaptureSource | null, b: CaptureSource | null): boolean
   return a.type === b.type && a.id === b.id;
 }
 
-type TabId = "screens" | "windows" | "cameras";
+type TabId = "screens" | "windows" | "cameras" | "cast";
 
 function PreviewImage({
   source,
@@ -112,6 +112,7 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
   const [selected, setSelected] = useState<CaptureSource[]>([]);
   const [hoveredWindow, setHoveredWindow] = useState<CaptureSource | null>(null);
   const [hoverAspectRatio, setHoverAspectRatio] = useState(16 / 9);
+  const [isWayland, setIsWayland] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTopMask, setShowTopMask] = useState(false);
@@ -225,6 +226,12 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
   const refresh = useCallback(async () => {
     console.log("[sources] listing capture sources...");
     try {
+      const wayland = await invoke<boolean>("is_wayland").catch(() => false);
+      setIsWayland(wayland);
+      if (wayland && tab !== "cast" && tab !== "cameras") {
+        setTab("cast");
+      }
+
       const result = await invoke<CaptureSourceList>("list_capture_sources");
       console.log(`[sources] found ${result.monitors.length} monitors, ${result.windows.length} windows`);
       setSources(result);
@@ -233,7 +240,7 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
       setTimeout(handleScroll, 10);
 
       // Auto-select primary monitor if nothing selected yet
-      if (selected.length === 0) {
+      if (selected.length === 0 && !wayland) {
         const primary = result.monitors.find((m) => m.isPrimary) ?? result.monitors[0];
         if (primary) {
           console.log(`[sources] auto-selected: monitor id=${primary.id} (${primary.name})`);
@@ -245,7 +252,7 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
       console.error(`[sources] failed to list sources: ${msg}`);
       setError(msg);
     }
-  }, [selected.length, handleScroll]);
+  }, [selected.length, handleScroll, tab]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -273,6 +280,18 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
       });
     } else {
       setSelected([src]);
+    }
+  };
+
+  const handleAddCast = async () => {
+    try {
+      const streams = await invoke<{ node_id: number }[]>("request_screencast");
+      if (streams && streams.length > 0) {
+        setSelected(streams.map(s => ({ type: "pipewire", id: s.node_id })));
+      }
+    } catch (e) {
+      console.error("Failed to request screencast", e);
+      setError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -308,13 +327,16 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
 
   const hasWindows = sources.windows.length > 0;
   const hasCameras = cameras.length > 0;
-  const hasTabs = hasWindows || hasCameras;
+  const hasTabs = hasWindows || hasCameras || isWayland;
 
   // Build tab list dynamically
-  const tabs: { id: TabId; label: string; count: number }[] = [
-    { id: "screens", label: "Screens", count: sources.monitors.length },
-  ];
-  if (hasWindows) tabs.push({ id: "windows", label: "Windows", count: sources.windows.length });
+  const tabs: { id: TabId; label: string; count?: number }[] = [];
+  if (isWayland) {
+    tabs.push({ id: "cast", label: "Cast" });
+  } else {
+    tabs.push({ id: "screens", label: "Screens", count: sources.monitors.length });
+    if (hasWindows) tabs.push({ id: "windows", label: "Windows", count: sources.windows.length });
+  }
   if (hasCameras) tabs.push({ id: "cameras", label: "Cameras", count: cameras.length });
 
   const isSingleSelected = selected.length === 1;
@@ -458,7 +480,7 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
                     />
                   )}
                   <span style={{ position: "relative", zIndex: 1, display: "inline-block" }}>
-                    {t.label} ({t.count})
+                    {t.label} {t.count !== undefined ? `(${t.count})` : ''}
                   </span>
                 </button>
               ))}
@@ -484,7 +506,18 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
           WebkitMaskImage: `linear-gradient(to bottom, ${showTopMask ? 'transparent 0%, black 12px' : 'black 0%, black 12px'}, ${showBottomMask ? 'black calc(100% - 12px), transparent 100%' : 'black calc(100% - 12px), black 100%'})`,
           paddingBottom: spacing.xs,
         }}>
-          {(tab === "screens" || (!hasWindows && !hasCameras)) &&
+          {tab === "cast" && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: spacing.md, padding: spacing.xl }}>
+              <p style={{ color: colors.text.secondary, textAlign: "center", fontSize: fontSize.md }}>
+                Wayland requires explicit permission to capture screens or windows.
+              </p>
+              <Button variant="secondary" size="md" onClick={handleAddCast}>
+                + Add new Screen/Window
+              </Button>
+            </div>
+          )}
+
+          {(tab === "screens" || (!isWayland && !hasWindows && !hasCameras)) &&
             sources.monitors.map((m) => {
               const src: CaptureSource = { type: "monitor", id: m.id };
               const isSelected = selected.some(p => sourcesEqual(p, src));
