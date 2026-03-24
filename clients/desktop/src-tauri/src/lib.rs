@@ -735,6 +735,17 @@ mod base64_engine {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Keep _sentry_guard alive for the lifetime of the app so events flush on exit.
+    let _sentry_guard = option_env!("SENTRY_DSN").map(|dsn| {
+        sentry::init((dsn, sentry::ClientOptions {
+            release: sentry::release_name!(),
+            environment: Some("desktop-tauri".into()),
+            send_default_pii: true,
+            sample_rate: 1.0,
+            ..Default::default()
+        }))
+    });
+
     tauri::Builder::default()
         .register_asynchronous_uri_scheme_protocol("lookout-preview", |app_handle, request, responder| {
             #[allow(unused_variables)]

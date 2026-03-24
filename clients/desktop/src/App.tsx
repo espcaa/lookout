@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import React, { useState, useEffect, useCallback } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { confirm } from "@tauri-apps/plugin-dialog";
@@ -361,6 +362,8 @@ export function App() {
 
   useEffect(() => {
     prevRouteRef.current = route;
+    const token = (route as { token?: string }).token;
+    Sentry.setTag("session_token", token ?? null);
   }, [route]);
 
   const routeKey = `${route.page}:${(route as { token?: string }).token ?? ""}`;
