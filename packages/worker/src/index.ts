@@ -1,3 +1,12 @@
+import * as Sentry from "@sentry/node";
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: "worker",
+  sendDefaultPii: true,
+  tracesSampleRate: 0.2,
+});
+
 import PgBoss from "pg-boss";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";

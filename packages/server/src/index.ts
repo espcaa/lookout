@@ -1,3 +1,12 @@
+import * as Sentry from "@sentry/node";
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: "server",
+  sendDefaultPii: true,
+  tracesSampleRate: 0.2,
+});
+
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";

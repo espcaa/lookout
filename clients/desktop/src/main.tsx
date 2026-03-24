@@ -1,9 +1,17 @@
+import * as Sentry from "@sentry/react";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { emit } from "@tauri-apps/api/event";
 import { createRoot } from "react-dom/client";
 import React from "react";
 import { getReport } from "./logger.js"; // side-effect: captures console, renders debug panel
 import { App } from "./App.js";
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  environment: "desktop",
+  sendDefaultPii: true,
+  tracesSampleRate: 0.2,
+});
 
 // Add global debug helper for deep links
 (window as any).__simulateDeepLink = (url: string) => {
@@ -55,8 +63,9 @@ class ErrorBoundary extends React.Component<
   static getDerivedStateFromError(err: Error) {
     return { error: err.stack || err.message, copied: false };
   }
-  componentDidCatch(error: Error) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("[react] render crash:", error.message, error.stack);
+    Sentry.captureException(error, { contexts: { react: { componentStack: errorInfo.componentStack ?? undefined } } });
   }
   handleCopy = () => {
     const report = `REACT CRASH:\n${this.state.error}\n\n--- LOG ---\n${getReport()}`;
