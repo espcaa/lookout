@@ -114,8 +114,28 @@ export function useNativeCapture(
         : String(err);
       console.error(`[capture] capture failed: ${msg}`);
       setError(msg);
+
+      // Check if the server paused the session (e.g., stale lastScreenshotAt
+      // triggered the cron auto-pause, causing upload rejections).
+      // If so, resume and let the next tick retry naturally.
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/sessions/${token}/status`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "paused") {
+            await fetch(`${apiBaseUrl}/api/sessions/${token}/resume`, { method: "POST" });
+            console.log("[capture] session auto-resumed after capture failure");
+            setError(null);
+          } else if (data.status !== "active" && data.status !== "pending") {
+            console.warn(`[capture] session is ${data.status}, stopping capture`);
+            setIsCapturing(false);
+          }
+        }
+      } catch {
+        // Best-effort — next tick will retry
+      }
     }
-  }, []);
+  }, [apiBaseUrl, token]);
 
   // Keep captureOnce in a ref so the interval always calls the latest version
   const captureRef = useRef(captureOnce);

@@ -499,6 +499,7 @@ export async function sessionRoutes(app: FastifyInstance) {
           status: "active",
           pausedAt: null,
           resumedAt: now,
+          lastScreenshotAt: now,
           updatedAt: now,
         })
         .where(and(eq(schema.sessions.id, session.id), eq(schema.sessions.status, "paused")))
