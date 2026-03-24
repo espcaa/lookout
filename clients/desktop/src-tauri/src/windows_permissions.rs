@@ -11,7 +11,7 @@ pub fn register_permission_handler(window: &tauri::WebviewWindow) {
         COREWEBVIEW2_PERMISSION_KIND_MICROPHONE, COREWEBVIEW2_PERMISSION_STATE_ALLOW,
     };
     use webview2_com::PermissionRequestedEventHandler;
-    use windows::core::HRESULT;
+    use windows::core::EventRegistrationToken;
 
     let result = window.with_webview(|webview| {
         // SAFETY: `controller()` and the COM pointer lifetimes are managed by
@@ -36,7 +36,7 @@ pub fn register_permission_handler(window: &tauri::WebviewWindow) {
             Ok(())
         }));
 
-        let mut _token = windows::Win32::Foundation::EventRegistrationToken::default();
+        let mut _token = EventRegistrationToken::default();
         unsafe {
             core.add_PermissionRequested(&handler, &mut _token)
                 .unwrap_or_else(|e| {
