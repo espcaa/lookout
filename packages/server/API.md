@@ -458,7 +458,7 @@ Creates a new session in `pending` state.
 {
   "token": "64-char hex string",
   "sessionId": "uuid",
-  "sessionUrl": "https://example.com/session?token=..."
+  "sessionUrl": "https://lookout.hackclub.com/session?token=..."
 }
 ```
 
@@ -502,6 +502,31 @@ Returns full session details including internal fields.
   "screenshotCount": 45
 }
 ```
+
+---
+
+### Lookup Session by Token (Admin)
+
+```
+GET /api/internal/sessions/by-token/:token
+```
+
+Returns the session ID for a given session token.
+
+**Path Parameters:**
+| Name | Type | Description |
+|------|------|-------------|
+| `token` | string | 64-char hex session token |
+
+**Response `200 OK`:**
+```json
+{
+  "sessionId": "uuid"
+}
+```
+
+**Errors:**
+- `404` — Session not found
 
 ---
 

@@ -16,13 +16,13 @@ export function useSessionTimer(
   const lastSyncRef = useRef(Date.now());
   // Base value the RAF tick counts from. Ratchets up so display never jumps backward.
   const baseRef = useRef(serverTrackedSeconds);
-  useEffect(() => {
-    // Compute where the display is right now (base + elapsed since last sync).
-    const currentDisplay = baseRef.current + Math.floor((Date.now() - lastSyncRef.current) / 1000);
 
-    // Always ratchet up: display should never be behind the server value.
-    // display ≥ server is the invariant — the user earned that time.
-    const newBase = Math.max(currentDisplay, serverTrackedSeconds);
+  // Effect 1: Ratchet baseRef against server value.
+  // No elapsed interpolation here — baseRef already holds the snapshotted display
+  // value from Effect 2's cleanup, so Math.max(base, server) is sufficient.
+  // Interpolation is Effect 2's job (RAF tick).
+  useEffect(() => {
+    const newBase = Math.max(baseRef.current, serverTrackedSeconds);
     if (newBase !== baseRef.current) {
       baseRef.current = newBase;
       setDisplaySeconds(newBase);
@@ -30,8 +30,15 @@ export function useSessionTimer(
     }
   }, [serverTrackedSeconds]);
 
+  // Effect 2: RAF-driven display interpolation.
+  // On activation: reset time anchor so pause duration isn't counted.
+  // On deactivation (cleanup): snapshot base+elapsed into baseRef to preserve
+  // the display value and prevent backward jumps on resume.
   useEffect(() => {
     if (!isActive) return;
+
+    lastSyncRef.current = Date.now();
+
     let raf: number;
     let lastRenderedSecond = -1;
     const tick = () => {
@@ -43,7 +50,11 @@ export function useSessionTimer(
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      baseRef.current += Math.floor((Date.now() - lastSyncRef.current) / 1000);
+      lastSyncRef.current = Date.now();
+    };
   }, [isActive, serverTrackedSeconds]);
 
   return displaySeconds;
