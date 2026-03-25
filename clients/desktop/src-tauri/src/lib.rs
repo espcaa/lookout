@@ -750,7 +750,11 @@ async fn upload_and_confirm(
 
     // Step 1: Get presigned URL from server
     let _ = app.emit("capture-progress", "getting upload url from server...");
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
     let url_response = client
         .get(format!(
             "{}/api/sessions/{}/upload-url",
@@ -940,6 +944,17 @@ mod base64_engine {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Keep _sentry_guard alive for the lifetime of the app so events flush on exit.
+    let _sentry_guard = option_env!("SENTRY_DSN").map(|dsn| {
+        sentry::init((dsn, sentry::ClientOptions {
+            release: sentry::release_name!(),
+            environment: Some("desktop-tauri".into()),
+            send_default_pii: true,
+            sample_rate: 1.0,
+            ..Default::default()
+        }))
+    });
+
     tauri::Builder::default()
         .register_asynchronous_uri_scheme_protocol("lookout-preview", |app_handle, request, responder| {
             #[allow(unused_variables)]
@@ -1055,6 +1070,7 @@ pub fn run() {
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_liquid_glass::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             config: Mutex::new(None),
             cold_start_urls: Mutex::new(None),

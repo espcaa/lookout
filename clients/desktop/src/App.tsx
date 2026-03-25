@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import React, { useState, useEffect, useCallback } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { confirm } from "@tauri-apps/plugin-dialog";
@@ -19,6 +20,7 @@ import { AddSessionPage } from "./components/AddSessionPage.js";
 import { SettingsPage } from "./components/SettingsPage.js";
 import { TrayApp } from "./components/TrayApp.js";
 import { useBlacklistedApps } from "./hooks/useBlacklistedApps.js";
+import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 
 const API_BASE = "https://lookout.hackclub.com";
 
@@ -60,6 +62,7 @@ function MainWindowApp() {
   const [isWayland, setIsWayland] = useState(false);
   const { route, navigate } = useHashRouter();
   const tokenStore = useTokenStore();
+  const updateStatus = useUpdateCheck();
   const gallery = useGallery({
     apiBaseUrl: API_BASE,
     tokens: tokenStore.getAllTokenValues(),
@@ -387,9 +390,39 @@ function MainWindowApp() {
 
   useEffect(() => {
     prevRouteRef.current = route;
+    const token = (route as { token?: string }).token;
+    Sentry.setTag("session_token", token ?? null);
   }, [route]);
 
   const routeKey = `${route.page}:${(route as { token?: string }).token ?? ""}`;
+
+  if (updateStatus.state !== "idle") {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        gap: 12,
+        fontFamily: "inherit",
+      }}>
+        {isMacOS && (
+          <div
+            data-tauri-drag-region
+            style={{ position: "absolute", top: 0, left: 0, right: 0, height: 32, background: "transparent", cursor: "default" }}
+          />
+        )}
+        <div style={{ fontSize: 14, opacity: 0.7 }}>
+          {updateStatus.state === "checking" && "Checking for updates…"}
+          {updateStatus.state === "no-update" && updateStatus.message}
+          {updateStatus.state === "downloading" && `Updating… ${updateStatus.progress}%`}
+          {updateStatus.state === "installing" && "Installing update…"}
+          {updateStatus.state === "done" && "Restarting…"}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>

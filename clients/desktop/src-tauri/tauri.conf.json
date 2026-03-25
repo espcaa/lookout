@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/nicehash/tauri/refs/tags/tauri-v2.3.1/crates/tauri-utils/schema.json",
   "productName": "Lookout",
   "identifier": "com.hackclub.lookout",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -31,13 +31,14 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src https://lookout.hackclub.com https://*.r2.cloudflarestorage.com http://localhost:* ws://localhost:* ipc: tauri: lookout-preview: http://lookout-preview.localhost; img-src 'self' blob: data: https://lookout.hackclub.com https://*.r2.cloudflarestorage.com lookout-preview: http://lookout-preview.localhost; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; media-src 'self' blob: https://lookout.hackclub.com https://*.r2.cloudflarestorage.com; font-src 'self' data:",
+      "csp": "default-src 'self'; connect-src https://lookout.hackclub.com https://*.r2.cloudflarestorage.com http://localhost:* ws://localhost:* ipc: tauri: lookout-preview: http://lookout-preview.localhost https://*.ingest.sentry.io https://*.ingest.us.sentry.io; img-src 'self' blob: data: https://lookout.hackclub.com https://*.r2.cloudflarestorage.com lookout-preview: http://lookout-preview.localhost; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; media-src 'self' blob: https://lookout.hackclub.com https://*.r2.cloudflarestorage.com; font-src 'self' data:",
       "dangerousDisableAssetCspModification": true
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "nsis", "deb", "appimage", "rpm"],
+    "createUpdaterArtifacts": true,
+    "targets": ["app", "dmg", "nsis", "deb", "appimage", "rpm"],
     "macOS": {
       "entitlements": "./Entitlements.plist"
     },
@@ -53,6 +54,15 @@
     "deep-link": {
       "desktop": {
         "schemes": ["lookout"]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM0OTY4MTcxNjk3N0YwQQpSV1FLZjVjV0YyaEpEQnZwVWpHVTBUSHdJcC9kZ09kRTJ6cVFZcFZVM0pqbGtwdHc2MjcwbC96Mwo=",
+      "endpoints": [
+        "https://github.com/hackclub/lookout/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }
