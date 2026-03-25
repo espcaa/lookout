@@ -143,29 +143,44 @@ export function useNativeCapture(
 
   // The capture loop: one effect manages the entire interval lifecycle.
   // Starts when isCapturing becomes true, stops when it becomes false.
+  // Uses a drift-compensating setTimeout chain so that upload latency
+  // doesn't push subsequent captures later and later (setInterval +
+  // busy-guard would silently skip ticks when uploads are slow, losing
+  // tracked minutes).  Each tick is scheduled relative to a wall-clock
+  // anchor so that an upload taking e.g. 2 s results in a 58 s wait,
+  // keeping captures aligned to a true 60 s cadence.
   // Detects sleep by comparing elapsed time between ticks — if the gap is
   // much longer than the interval, the machine slept and we auto-resume.
-  // Uses a busy guard to prevent overlapping captures (camera uploads can
-  // take longer than the interval).
   useEffect(() => {
     if (!isCapturing) return;
 
-    let lastTick = Date.now();
-    let busy = false;
+    let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    // Wall-clock time when the next tick *should* fire.
+    // Initialised to "now" so the first capture runs immediately.
+    let nextTargetTime = Date.now();
+    let lastTickTime = Date.now();
+
     const SLEEP_THRESHOLD = SCREENSHOT_INTERVAL_MS * 2.5;
 
+    const scheduleNext = () => {
+      if (cancelled) return;
+      nextTargetTime += SCREENSHOT_INTERVAL_MS;
+      const delay = Math.max(0, nextTargetTime - Date.now());
+      timerId = setTimeout(tick, delay);
+    };
+
     const tick = async () => {
-      if (busy) {
-        console.debug("[capture] previous capture still in progress, skipping tick");
-        return;
-      }
+      if (cancelled) return;
 
       const now = Date.now();
-      const elapsed = now - lastTick;
-      lastTick = now;
+      const elapsed = now - lastTickTime;
+      lastTickTime = now;
 
       if (elapsed > SLEEP_THRESHOLD) {
         console.warn(`[capture] detected sleep (gap: ${Math.round(elapsed / 1000)}s), checking session status...`);
+        // Re-anchor to now so we don't rapid-fire to "catch up" after sleep
+        nextTargetTime = now;
         try {
           const res = await fetch(`${apiBaseUrl}/api/sessions/${token}/status`);
           if (res.ok) {
@@ -189,20 +204,20 @@ export function useNativeCapture(
         }
       }
 
-      busy = true;
       try {
         await captureRef.current();
       } finally {
-        busy = false;
+        scheduleNext();
       }
     };
 
     console.log(`[capture] capture loop started, interval: ${SCREENSHOT_INTERVAL_MS}ms`);
-    tick();
-    const id = setInterval(tick, SCREENSHOT_INTERVAL_MS);
+    // Fire the first capture immediately (delay = 0 since nextTargetTime = now)
+    timerId = setTimeout(tick, 0);
     return () => {
       console.log("[capture] capture loop stopped");
-      clearInterval(id);
+      cancelled = true;
+      if (timerId !== null) clearTimeout(timerId);
     };
   }, [isCapturing, apiBaseUrl, token]);
 

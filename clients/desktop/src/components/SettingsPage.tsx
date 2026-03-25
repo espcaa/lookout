@@ -14,9 +14,10 @@ import { useBlacklistedApps } from "../hooks/useBlacklistedApps.js";
 
 interface SettingsPageProps {
   onBack: () => void;
+  isWayland?: boolean;
 }
 
-export function SettingsPage({ onBack }: SettingsPageProps) {
+export function SettingsPage({ onBack, isWayland }: SettingsPageProps) {
   const { blacklistedApps, toggleApp } = useBlacklistedApps();
   const [runningApps, setRunningApps] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +115,28 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         </p>
       </div>
 
+      {/* Search + App list (hidden on Wayland) */}
+      {isWayland ? (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: radii.lg,
+            border: `1px solid ${colors.border.default}`,
+            background: colors.bg.surface,
+            padding: spacing.xxl,
+            color: colors.text.tertiary,
+            fontSize: fontSize.sm,
+            textAlign: "center",
+            lineHeight: 1.5,
+          }}
+        >
+          App filtering is not supported on Wayland.
+        </div>
+      ) : (
+        <>
       {/* Search */}
       <div style={{ flexShrink: 0, marginBottom: spacing.md }}>
         <input
@@ -282,6 +305,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

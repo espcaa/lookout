@@ -566,6 +566,16 @@ fn list_running_apps() -> Vec<String> {
 /// List available capture sources (monitors + windows).
 #[tauri::command]
 fn list_capture_sources() -> Result<CaptureSourceList, String> {
+    // On Wayland (no X11), xcap cannot enumerate sources.
+    // Return an empty list so the frontend falls through to the portal/Cast flow.
+    #[cfg(target_os = "linux")]
+    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        return Ok(CaptureSourceList {
+            monitors: Vec::new(),
+            windows: Vec::new(),
+        });
+    }
+
     use xcap::Monitor;
     #[cfg(not(target_os = "macos"))]
     use xcap::Window;

@@ -57,6 +57,7 @@ function MainWindowApp() {
   const isMacOS = navigator.userAgent.includes("Mac");
   const [screenPermGranted, setScreenPermGranted] = useState(!isMacOS);
   const [cameraPermGranted, setCameraPermGranted] = useState(!isMacOS);
+  const [isWayland, setIsWayland] = useState(false);
   const { route, navigate } = useHashRouter();
   const tokenStore = useTokenStore();
   const gallery = useGallery({
@@ -66,6 +67,11 @@ function MainWindowApp() {
 
   // Initialize blacklisted apps sync from localStorage to Rust backend
   useBlacklistedApps();
+
+  // Detect Wayland — filter apps feature is unsupported there
+  useEffect(() => {
+    invoke<boolean>("is_wayland").then(setIsWayland).catch(() => {});
+  }, []);
 
   // Deep link handler -- saves token and navigates appropriately.
   // If currently recording another session, pauses it first.
@@ -296,13 +302,14 @@ function MainWindowApp() {
               }
             }}
             onAdd={() => navigate({ page: "add" })}
-            onSettings={() => navigate({ page: "settings" })}
+            onSettings={isWayland ? undefined : () => navigate({ page: "settings" })}
           />
         );
       case "settings":
         return (
           <SettingsPage
             onBack={() => navigate({ page: "gallery" })}
+            isWayland={isWayland}
           />
         );
       case "add":
