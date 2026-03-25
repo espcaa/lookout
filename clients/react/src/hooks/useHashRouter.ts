@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from "react";
 export type Route =
   | { page: "gallery" }
   | { page: "add" }
+  | { page: "settings" }
   | { page: "record"; token: string }
   | { page: "session"; token: string }
   | { page: "tray" };
@@ -16,6 +17,7 @@ function parseHash(hash: string): Route {
   const token = params.get("token") ?? "";
 
   if (path === "add") return { page: "add" };
+  if (path === "settings") return { page: "settings" };
   if (path === "tray") return { page: "tray" };
   if (path === "record" && token) return { page: "record", token };
   if (path === "session" && token) return { page: "session", token };
@@ -29,6 +31,8 @@ function routeToHash(route: Route): string {
       return "#/";
     case "add":
       return "#/add";
+    case "settings":
+      return "#/settings";
     case "tray":
       return "#/tray";
     case "record":

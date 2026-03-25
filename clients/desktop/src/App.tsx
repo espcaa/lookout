@@ -16,7 +16,9 @@ import { isValidToken, extractToken } from "./utils.js";
 import { PermissionScreen } from "./components/PermissionScreen.js";
 import { RecordPage } from "./components/RecordPage.js";
 import { AddSessionPage } from "./components/AddSessionPage.js";
+import { SettingsPage } from "./components/SettingsPage.js";
 import { TrayApp } from "./components/TrayApp.js";
+import { useBlacklistedApps } from "./hooks/useBlacklistedApps.js";
 
 const API_BASE = "https://lookout.hackclub.com";
 
@@ -53,6 +55,9 @@ export function App() {
     apiBaseUrl: API_BASE,
     tokens: tokenStore.getAllTokenValues(),
   });
+
+  // Initialize blacklisted apps sync from localStorage to Rust backend
+  useBlacklistedApps();
 
   // Deep link handler -- saves token and navigates appropriately.
   // If currently recording another session, pauses it first.
@@ -299,6 +304,13 @@ export function App() {
               }
             }}
             onAdd={() => navigate({ page: "add" })}
+            onSettings={() => navigate({ page: "settings" })}
+          />
+        );
+      case "settings":
+        return (
+          <SettingsPage
+            onBack={() => navigate({ page: "gallery" })}
           />
         );
       case "add":
@@ -427,7 +439,7 @@ export function App() {
               position: "absolute",
               inset: 0,
               height: "100%",
-              overflowY: route.page === "gallery" ? "hidden" : "auto",
+              overflowY: (route.page === "gallery") ? "hidden" : "auto",
             }}
           >
             {mainView}

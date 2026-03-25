@@ -14,6 +14,7 @@ export interface GalleryProps {
   onArchive?: (token: string) => void;
   onRefresh?: () => void;
   onAdd?: () => void;
+  onSettings?: () => void;
 }
 
 const addButtonStyle: React.CSSProperties = {
@@ -24,15 +25,25 @@ const addButtonStyle: React.CSSProperties = {
   padding: 0,
 };
 
-function GalleryHeader({ onAdd }: { onAdd?: () => void }) {
+function GalleryHeader({ onAdd, onSettings }: { onAdd?: () => void; onSettings?: () => void }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: spacing.lg, paddingBottom: 0, flexShrink: 0 }}>
       <h2 style={{ fontSize: fontSize.heading, fontWeight: fontWeight.bold, color: colors.text.primary, margin: 0 }}>Your Timelapses</h2>
-      {onAdd && (
-        <Button variant="ghost" size="sm" onClick={onAdd} title="Add session" style={addButtonStyle}>
-          +
-        </Button>
-      )}
+      <div style={{ display: "flex", alignItems: "center", gap: spacing.xs }}>
+        {onSettings && (
+          <Button variant="ghost" size="sm" onClick={onSettings} title="Settings" style={addButtonStyle}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </Button>
+        )}
+        {onAdd && (
+          <Button variant="ghost" size="sm" onClick={onAdd} title="Add session" style={addButtonStyle}>
+            +
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -48,6 +59,7 @@ export function Gallery({
   onArchive,
   onRefresh,
   onAdd,
+  onSettings,
 }: GalleryProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTopMask, setShowTopMask] = useState(false);
@@ -82,7 +94,7 @@ export function Gallery({
   if (error && sessions.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <GalleryHeader onAdd={onAdd} />
+        <GalleryHeader onAdd={onAdd} onSettings={onSettings} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: spacing.xxl }}>
           <ErrorDisplay error={error} variant="inline" />
           {onRefresh && (
@@ -98,7 +110,7 @@ export function Gallery({
   if (sessions.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <GalleryHeader onAdd={onAdd} />
+        <GalleryHeader onAdd={onAdd} onSettings={onSettings} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: spacing.xxl }}>
           <p style={{ marginBottom: spacing.md }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={colors.text.primary} strokeWidth="1.5" style={{ opacity: 0.2 }}>
@@ -118,7 +130,7 @@ export function Gallery({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <GalleryHeader onAdd={onAdd} />
+      <GalleryHeader onAdd={onAdd} onSettings={onSettings} />
       <div
         ref={scrollRef}
         onScroll={handleScroll}
