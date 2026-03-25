@@ -69,7 +69,6 @@ fn toggle_tray_window(app: &AppHandle, rect: tauri::Rect) {
             let _ = window.hide();
         } else {
             let _ = position_and_show_window(&window, rect);
-            let _ = window.set_focus();
             let _ = window.emit("tray-opened", ());
         }
     } else {
@@ -82,7 +81,6 @@ fn toggle_tray_window(app: &AppHandle, rect: tauri::Rect) {
             .always_on_top(true)
             .transparent(true)
             .skip_taskbar(true)
-            .focused(true)
             .visible(false);
 
         #[cfg(target_os = "macos")]
@@ -95,7 +93,12 @@ fn toggle_tray_window(app: &AppHandle, rect: tauri::Rect) {
             let w = window.clone();
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::Focused(false) = event {
-                    let _ = w.hide();
+                    // Slight workaround: when clicking the tray icon, focus is lost immediately
+                    // from the old window state before it's properly evaluated.
+                    // By checking visibility, we make it reliable.
+                    if w.is_visible().unwrap_or(false) {
+                        let _ = w.hide();
+                    }
                 }
             });
 
@@ -120,14 +123,43 @@ fn position_and_show_window(
     let tray_logical_size = tray_rect.size.to_logical::<f64>(scale_factor);
 
     let window_logical_size = window_size.to_logical::<f64>(scale_factor);
+    let monitor_pos = monitor.position().to_logical::<f64>(scale_factor);
+    let monitor_size = monitor.size().to_logical::<f64>(scale_factor);
 
-    let x =
+    let mut x =
         tray_logical_pos.x + (tray_logical_size.width / 2.0) - (window_logical_size.width / 2.0);
-    let y = tray_logical_pos.y + tray_logical_size.height;
+    let mut y = tray_logical_pos.y + tray_logical_size.height;
+
+    // Check if the window overflows the bottom of the screen (e.g., Windows taskbar at bottom)
+    if y + window_logical_size.height > monitor_pos.y + monitor_size.height {
+        // Position it ABOVE the tray icon instead
+        y = tray_logical_pos.y - window_logical_size.height;
+    }
+
+    // Check right bounds
+    if x + window_logical_size.width > monitor_pos.x + monitor_size.width {
+        x = monitor_pos.x + monitor_size.width - window_logical_size.width;
+    }
+
+    // Check left bounds
+    if x < monitor_pos.x {
+        x = monitor_pos.x;
+    }
 
     window.set_position(LogicalPosition::new(x, y))?;
-    window.show()?;
-    window.set_focus()?;
+
+    #[cfg(target_os = "macos")]
+    {
+        window.show()?;
+        window.set_focus()?;
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // On Windows, showing and focusing simultaneously can cause immediate blur
+        window.show()?;
+        window.set_focus()?;
+    }
     Ok(())
 }
 

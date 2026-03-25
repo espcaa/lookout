@@ -9,7 +9,7 @@ import {
   radii,
 } from "@lookout/react";
 import { invoke } from "../logger.js";
-import { PageLayout, cardButtonStyle } from "./PageLayout.js";
+import { cardButtonStyle } from "./PageLayout.js";
 import { useBlacklistedApps } from "../hooks/useBlacklistedApps.js";
 
 interface SettingsPageProps {
@@ -182,17 +182,23 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             <AnimatePresence initial={false}>
               {filtered.map((app) => {
                 const isBlacklisted = blacklistedApps.includes(app);
-                const isRunning = runningApps.includes(app);
                 return (
                   <motion.button
                     key={app}
                     layout
-                    initial={{ opacity: 0, y: -4 }}
+                    initial="idle"
+                    whileHover="hover"
+                    whileTap="active"
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{
+                      layout: { type: "spring", stiffness: 500, damping: 35, mass: 0.8 },
+                      opacity: { duration: 0.15 },
+                      y: { duration: 0.15 },
+                    }}
                     onClick={() => toggleApp(app)}
                     style={{
+                      position: "relative",
                       display: "flex",
                       alignItems: "center",
                       gap: spacing.md,
@@ -205,18 +211,28 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       textAlign: "left",
                       color: colors.text.primary,
                       fontSize: fontSize.md,
-                      transition: "background 0.1s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = colors.bg.selected;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
                     }}
                   >
+                    <motion.div
+                      variants={{
+                        idle: { scale: 1, background: "transparent" },
+                        hover: { scale: 1, background: colors.bg.selected },
+                        active: { scale: 0.96, background: colors.bg.selected },
+                      }}
+                      transition={{ duration: 0.12, ease: "easeOut" }}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "transparent",
+                        borderRadius: radii.md,
+                      }}
+                    />
+
                     {/* Checkbox */}
                     <div
                       style={{
+                        position: "relative",
+                        zIndex: 1,
                         width: 18,
                         height: 18,
                         borderRadius: radii.sm,
@@ -245,8 +261,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       )}
                     </div>
 
-                    {/* App name + running indicator */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* App name */}
+                    <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
                       <span
                         style={{
                           display: "block",
@@ -258,32 +274,6 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       >
                         {app}
                       </span>
-                    </div>
-
-                    {/* Status indicators */}
-                    <div style={{ display: "flex", alignItems: "center", gap: spacing.xs, flexShrink: 0 }}>
-                      {isRunning && (
-                        <div
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            background: colors.status.success,
-                          }}
-                          title="Running"
-                        />
-                      )}
-                      {isBlacklisted && (
-                        <span
-                          style={{
-                            fontSize: fontSize.xs,
-                            color: colors.status.danger,
-                            fontWeight: fontWeight.medium,
-                          }}
-                        >
-                          filtered
-                        </span>
-                      )}
                     </div>
                   </motion.button>
                 );
