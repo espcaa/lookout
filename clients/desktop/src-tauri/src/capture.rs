@@ -16,6 +16,120 @@ use objc2_core_graphics::{
     CGWindowListCopyWindowInfo, CGWindowListCreateImage, CGWindowListOption,
 };
 
+/// Black out regions of a monitor capture that belong to blacklisted apps,
+/// but preserve regions where a non-blacklisted window is above (in front).
+///
+/// `list_onscreen_window_rects()` returns windows in front-to-back z-order.
+/// We track non-blacklisted window rects as we go; for each blacklisted
+/// window, we skip pixels already covered by a non-blacklisted window above.
+fn redact_blacklisted_regions(
+    img: &mut image::RgbaImage,
+    monitor_bounds: (f64, f64, f64, f64), // (x, y, w, h) in logical screen coords
+    blacklisted_apps: &[String],
+    capture_w: u32,
+    capture_h: u32,
+) {
+    if blacklisted_apps.is_empty() {
+        return;
+    }
+
+    let on_screen = crate::list_onscreen_window_rects();
+    let (mon_x, mon_y, mon_w, mon_h) = monitor_bounds;
+    let scale_x = capture_w as f64 / mon_w;
+    let scale_y = capture_h as f64 / mon_h;
+    let black = image::Rgba([0, 0, 0, 255]);
+
+    // Non-blacklisted window pixel rects above (in front of) the current window.
+    let mut above_pixel_rects: Vec<(u32, u32, u32, u32)> = Vec::new();
+
+    for win in &on_screen {
+        let app_lower = win.app_name.to_ascii_lowercase();
+        let is_blacklisted = blacklisted_apps
+            .iter()
+            .any(|b| b.to_ascii_lowercase() == app_lower);
+
+        // Compute intersection of window with monitor in screen coords
+        let ix1 = f64::max(win.x, mon_x);
+        let iy1 = f64::max(win.y, mon_y);
+        let ix2 = f64::min(win.x + win.width, mon_x + mon_w);
+        let iy2 = f64::min(win.y + win.height, mon_y + mon_h);
+
+        if ix2 <= ix1 || iy2 <= iy1 {
+            continue;
+        }
+
+        // Convert to pixel coords
+        let px1 = ((ix1 - mon_x) * scale_x).round() as u32;
+        let py1 = ((iy1 - mon_y) * scale_y).round() as u32;
+        let px2 = (((ix2 - mon_x) * scale_x).round() as u32).min(capture_w);
+        let py2 = (((iy2 - mon_y) * scale_y).round() as u32).min(capture_h);
+
+        if px2 <= px1 || py2 <= py1 {
+            continue;
+        }
+
+        if !is_blacklisted {
+            above_pixel_rects.push((px1, py1, px2, py2));
+            continue;
+        }
+
+        // Blacklisted window — paint black, skipping pixels under above rects
+        if above_pixel_rects.is_empty() {
+            for y in py1..py2 {
+                for x in px1..px2 {
+                    img.put_pixel(x, y, black);
+                }
+            }
+        } else {
+            for y in py1..py2 {
+                for x in px1..px2 {
+                    let covered = above_pixel_rects
+                        .iter()
+                        .any(|(ax1, ay1, ax2, ay2)| x >= *ax1 && x < *ax2 && y >= *ay1 && y < *ay2);
+                    if !covered {
+                        img.put_pixel(x, y, black);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Get monitor bounds in the same coordinate space as window positions.
+///
+/// - **macOS**: Both monitor and window coords are in logical (point) space.
+///   xcap's `width()`/`height()` return logical dimensions. No adjustment needed.
+/// - **Windows**: Both monitor and window coords are in physical pixel space.
+///   xcap's `width()`/`height()` return `dmPelsWidth`/`dmPelsHeight` (physical).
+///   No adjustment needed.
+/// - **Linux**: xcap's monitor `width()`/`height()` are divided by scale_factor
+///   (logical), but window x/y from `TranslateCoordinates` are physical.
+///   We multiply back by scale_factor to get physical coords.
+fn get_monitor_screen_bounds(monitor_id: u32) -> Option<(f64, f64, f64, f64)> {
+    let monitors = Monitor::all().ok()?;
+    for m in monitors {
+        if m.id().ok() == Some(monitor_id) {
+            let x = m.x().unwrap_or(0) as f64;
+            let y = m.y().unwrap_or(0) as f64;
+            let w = m.width().ok()? as f64;
+            let h = m.height().ok()? as f64;
+
+            #[cfg(target_os = "linux")]
+            {
+                // xcap divides by scale_factor on Linux, but window coords
+                // (from TranslateCoordinates) are in physical pixels.
+                // Multiply back to get physical-pixel monitor bounds.
+                let scale = m.scale_factor().unwrap_or(1.0) as f64;
+                return Some((x * scale, y * scale, w * scale, h * scale));
+            }
+
+            #[cfg(not(target_os = "linux"))]
+            return Some((x, y, w, h));
+        }
+    }
+    None
+}
+
 fn capture_to_dynamic_image(
     source: &CaptureSource,
     #[allow(unused_variables)] pipewire_fd: Option<i32>,
@@ -71,6 +185,30 @@ fn capture_to_dynamic_image(
     Ok(DynamicImage::ImageRgba8(img))
 }
 
+/// Capture a source and apply blacklist redaction for monitor captures.
+fn capture_to_dynamic_image_with_blacklist(
+    source: &CaptureSource,
+    pipewire_fd: Option<i32>,
+    blacklisted_apps: &[String],
+) -> Result<DynamicImage, String> {
+    let mut dynamic = capture_to_dynamic_image(source, pipewire_fd)?;
+
+    // Only apply redaction for monitor captures with a non-empty blacklist
+    if let CaptureSource::Monitor { id } = source {
+        if !blacklisted_apps.is_empty() {
+            if let Some(bounds) = get_monitor_screen_bounds(*id) {
+                let mut rgba = dynamic.to_rgba8();
+                let w = rgba.width();
+                let h = rgba.height();
+                redact_blacklisted_regions(&mut rgba, bounds, blacklisted_apps, w, h);
+                dynamic = DynamicImage::ImageRgba8(rgba);
+            }
+        }
+    }
+
+    Ok(dynamic)
+}
+
 #[cfg(target_os = "macos")]
 fn capture_window_macos_to_dynamic_image(id: u32) -> Result<DynamicImage, String> {
     let window = get_window_cf_dictionary_any_space(id)?;
@@ -101,7 +239,26 @@ pub fn take_screenshot_raw(
     jpeg_quality: u8,
     pipewire_fd: Option<i32>,
 ) -> Result<RawCaptureResult, String> {
-    let mut dynamic = capture_to_dynamic_image(&source, pipewire_fd)?;
+    take_screenshot_raw_with_blacklist(
+        source,
+        max_width,
+        max_height,
+        jpeg_quality,
+        pipewire_fd,
+        &[],
+    )
+}
+
+pub fn take_screenshot_raw_with_blacklist(
+    source: CaptureSource,
+    max_width: u32,
+    max_height: u32,
+    jpeg_quality: u8,
+    pipewire_fd: Option<i32>,
+    blacklisted_apps: &[String],
+) -> Result<RawCaptureResult, String> {
+    let mut dynamic =
+        capture_to_dynamic_image_with_blacklist(&source, pipewire_fd, blacklisted_apps)?;
 
     if dynamic.width() <= 2 || dynamic.height() <= 2 {
         return Err("Source is minimized or invisible".to_string());
@@ -141,7 +298,32 @@ pub fn take_screenshot(
     jpeg_quality: u8,
     pipewire_fd: Option<i32>,
 ) -> Result<CaptureResult, String> {
-    let raw = take_screenshot_raw(source, max_width, max_height, jpeg_quality, pipewire_fd)?;
+    take_screenshot_with_blacklist(
+        source,
+        max_width,
+        max_height,
+        jpeg_quality,
+        pipewire_fd,
+        &[],
+    )
+}
+
+pub fn take_screenshot_with_blacklist(
+    source: CaptureSource,
+    max_width: u32,
+    max_height: u32,
+    jpeg_quality: u8,
+    pipewire_fd: Option<i32>,
+    blacklisted_apps: &[String],
+) -> Result<CaptureResult, String> {
+    let raw = take_screenshot_raw_with_blacklist(
+        source,
+        max_width,
+        max_height,
+        jpeg_quality,
+        pipewire_fd,
+        blacklisted_apps,
+    )?;
     let size_bytes = raw.data.len();
 
     use base64::Engine;
@@ -162,23 +344,44 @@ pub fn take_stitched_screenshots(
     jpeg_quality: u8,
     pipewire_fd: Option<i32>,
 ) -> Result<CaptureResult, String> {
+    take_stitched_screenshots_with_blacklist(
+        sources,
+        max_width,
+        max_height,
+        jpeg_quality,
+        pipewire_fd,
+        &[],
+    )
+}
+
+pub fn take_stitched_screenshots_with_blacklist(
+    sources: &[CaptureSource],
+    max_width: u32,
+    max_height: u32,
+    jpeg_quality: u8,
+    pipewire_fd: Option<i32>,
+    blacklisted_apps: &[String],
+) -> Result<CaptureResult, String> {
     if sources.is_empty() {
         return Err("No sources provided".to_string());
     }
 
     if sources.len() == 1 {
-        return take_screenshot(
+        return take_screenshot_with_blacklist(
             sources[0].clone(),
             max_width,
             max_height,
             jpeg_quality,
             pipewire_fd,
+            blacklisted_apps,
         );
     }
 
     let mut images = Vec::new();
     for source in sources {
-        if let Ok(img) = capture_to_dynamic_image(source, pipewire_fd) {
+        if let Ok(img) =
+            capture_to_dynamic_image_with_blacklist(source, pipewire_fd, blacklisted_apps)
+        {
             // Drop ghost artifacts from closed/minimized windows (OS sometimes returns 1x1 buffers)
             if img.width() > 2 && img.height() > 2 {
                 images.push(img);

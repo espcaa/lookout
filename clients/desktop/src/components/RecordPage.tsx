@@ -207,8 +207,8 @@ export function RecordPage({ token, onBack, onViewSession }: RecordPageProps) {
                   </span>
                 )}
               </Button>
-              <h2 style={{ position: "absolute", left: 0, right: 0, textAlign: "center", fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, margin: 0, pointerEvents: "none" }}>
-                What should Lookout capture?
+              <h2 style={{ position: "absolute", left: sessionStatus !== "pending" ? 100 : 0, right: sessionStatus !== "pending" ? 100 : 0, textAlign: "center", fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, margin: 0, pointerEvents: "none" }}>
+                {sessionStatus !== "pending" ? "Select source" : "What should Lookout capture?"}
               </h2>
               {sessionStatus !== "pending" && (
                 <Button variant="danger" size="md" loading={stopping} onClick={handleStopClick} style={{ zIndex: 1 }}>

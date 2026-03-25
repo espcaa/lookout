@@ -232,6 +232,15 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
         setTab("cast");
       }
 
+      if (wayland) {
+        // On Wayland, xcap can't enumerate sources (no X11).
+        // Set an empty source list so the UI renders the Cast tab directly.
+        setSources({ monitors: [], windows: [] });
+        setError(null);
+        setTimeout(handleScroll, 10);
+        return;
+      }
+
       const result = await invoke<CaptureSourceList>("list_capture_sources");
       console.log(`[sources] found ${result.monitors.length} monitors, ${result.windows.length} windows`);
       setSources(result);

@@ -2,9 +2,10 @@ mod capture;
 mod crop;
 mod pipewire;
 mod screencast;
+mod tray;
+#[cfg(target_os = "windows")]
+mod windows_permissions;
 
-#[cfg(target_os = "macos")]
-use std::ffi::c_void;
 #[cfg(target_os = "macos")]
 use objc2_core_foundation::{CFBoolean, CFDictionary, CFNumber, CFNumberType, CFString, CGRect};
 #[cfg(target_os = "macos")]
@@ -16,12 +17,14 @@ use serde::{Deserialize, Serialize};
 #[cfg(target_os = "macos")]
 use std::collections::HashMap;
 #[cfg(target_os = "macos")]
-use std::sync::OnceLock;
+use std::ffi::c_void;
 use std::sync::Mutex;
 #[cfg(target_os = "macos")]
+use std::sync::OnceLock;
+#[cfg(target_os = "macos")]
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter, Manager, State};
 use tauri::http;
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 #[cfg(target_os = "macos")]
@@ -44,6 +47,8 @@ pub struct AppState {
     pub cold_start_urls: Mutex<Option<Vec<String>>>,
     #[cfg(target_os = "linux")]
     pub pipewire_fd: Mutex<Option<std::os::fd::RawFd>>,
+    /// App names whose windows should be blacked out in monitor captures.
+    pub blacklisted_apps: Mutex<Vec<String>>,
 }
 
 /// Central deep link handler. All deep link entry points (cold start, single
@@ -132,6 +137,117 @@ pub struct CaptureSourceList {
     pub windows: Vec<WindowInfo>,
 }
 
+/// Info about an on-screen window, including its bounds for redaction.
+struct OnScreenWindowRect {
+    app_name: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+/// List all on-screen windows (current space only) with their bounds.
+/// Used for blacking out blacklisted app windows in monitor captures.
+/// Filters out system chrome (Dock, menu bar, etc.) and tiny windows.
+#[cfg(target_os = "macos")]
+fn list_onscreen_window_rects() -> Vec<OnScreenWindowRect> {
+    let Some(entries) = CGWindowListCopyWindowInfo(
+        CGWindowListOption::OptionOnScreenOnly | CGWindowListOption::ExcludeDesktopElements,
+        0,
+    ) else {
+        return Vec::new();
+    };
+
+    let mut rects = Vec::new();
+
+    for i in 0..entries.count() {
+        let dict_ref = unsafe { entries.value_at_index(i) } as *const CFDictionary;
+        if dict_ref.is_null() {
+            continue;
+        }
+        let dict = unsafe { &*dict_ref };
+
+        let app_name = dict_string(dict, "kCGWindowOwnerName").unwrap_or_default();
+        if app_name.is_empty() {
+            continue;
+        }
+
+        let title = dict_string(dict, "kCGWindowName").unwrap_or_default();
+
+        // Skip system chrome — these span the screen and would mask everything
+        if should_exclude_window(&app_name, &title) {
+            continue;
+        }
+
+        let Some(bounds) = window_bounds(dict) else {
+            continue;
+        };
+
+        // Skip tiny windows (status bar items, badges, etc.)
+        if bounds.size.width < 50.0 || bounds.size.height < 50.0 {
+            continue;
+        }
+
+        // Only include windows that are on-screen
+        let is_on_screen = dict_bool(dict, "kCGWindowIsOnscreen").unwrap_or(false);
+        if !is_on_screen {
+            continue;
+        }
+
+        rects.push(OnScreenWindowRect {
+            app_name,
+            x: bounds.origin.x,
+            y: bounds.origin.y,
+            width: bounds.size.width,
+            height: bounds.size.height,
+        });
+    }
+
+    rects
+}
+
+/// List all visible windows with their bounds (Windows/Linux).
+/// Uses xcap::Window::all() which returns windows in z-order (front-to-back).
+/// On Linux/Wayland without XWayland this will return an empty list.
+#[cfg(not(target_os = "macos"))]
+fn list_onscreen_window_rects() -> Vec<OnScreenWindowRect> {
+    use xcap::Window;
+    let windows = match Window::all() {
+        Ok(w) => w,
+        Err(_) => return Vec::new(),
+    };
+
+    let mut rects = Vec::new();
+    for w in windows {
+        let app_name = w.app_name().unwrap_or_default();
+        if app_name.is_empty() || app_name == "Lookout" {
+            continue;
+        }
+        let title = w.title().unwrap_or_default();
+        if should_exclude_window(&app_name, &title) {
+            continue;
+        }
+        if w.is_minimized().unwrap_or(false) {
+            continue;
+        }
+        let width = w.width().unwrap_or(0) as f64;
+        let height = w.height().unwrap_or(0) as f64;
+        if width < 50.0 || height < 50.0 {
+            continue;
+        }
+        let x = w.x().unwrap_or(0) as f64;
+        let y = w.y().unwrap_or(0) as f64;
+        rects.push(OnScreenWindowRect {
+            app_name,
+            x,
+            y,
+            width,
+            height,
+        });
+    }
+    rects
+}
+
 fn should_exclude_window(app_name: &str, title: &str) -> bool {
     let app_name_lower = app_name.to_ascii_lowercase();
     let title_lower = title.to_ascii_lowercase();
@@ -178,7 +294,8 @@ fn get_cf_dictionary_get_value(cf_dictionary: &CFDictionary, key: &str) -> Optio
 fn dict_i32(dict: &CFDictionary, key: &str) -> Option<i32> {
     let cf_number = get_cf_dictionary_get_value(dict, key)? as *const CFNumber;
     let mut value: i32 = 0;
-    let ok = unsafe { (*cf_number).value(CFNumberType::IntType, &mut value as *mut _ as *mut c_void) };
+    let ok =
+        unsafe { (*cf_number).value(CFNumberType::IntType, &mut value as *mut _ as *mut c_void) };
     if !ok {
         return None;
     }
@@ -252,7 +369,8 @@ fn window_is_capturable(window_id: u32, bounds: CGRect) -> bool {
         && data.as_ref().is_some_and(|bytes| !bytes.is_empty());
 
     if let Ok(mut cache_guard) = cache.lock() {
-        cache_guard.retain(|_, entry| now.duration_since(entry.checked_at) <= CAPTURABLE_WINDOW_CACHE_TTL);
+        cache_guard
+            .retain(|_, entry| now.duration_since(entry.checked_at) <= CAPTURABLE_WINDOW_CACHE_TTL);
         cache_guard.insert(
             window_id,
             CapturableWindowCacheEntry {
@@ -379,9 +497,85 @@ fn get_cold_start_urls(state: State<'_, AppState>) -> Vec<String> {
     urls.take().unwrap_or_default()
 }
 
+/// Set the list of blacklisted app names (replaces current list).
+#[tauri::command]
+fn set_blacklisted_apps(apps: Vec<String>, state: State<'_, AppState>) -> Result<(), String> {
+    let mut blacklist = state.blacklisted_apps.lock().map_err(|e| e.to_string())?;
+    *blacklist = apps;
+    Ok(())
+}
+
+/// Get the current list of blacklisted app names.
+#[tauri::command]
+fn get_blacklisted_apps(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let blacklist = state.blacklisted_apps.lock().map_err(|e| e.to_string())?;
+    Ok(blacklist.clone())
+}
+
+/// List unique app names from all running windows (across all spaces).
+/// Returns a sorted, deduplicated list of app names.
+#[tauri::command]
+fn list_running_apps() -> Vec<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let Some(entries) = CGWindowListCopyWindowInfo(
+            CGWindowListOption::OptionAll | CGWindowListOption::ExcludeDesktopElements,
+            0,
+        ) else {
+            return Vec::new();
+        };
+
+        let mut apps = std::collections::BTreeSet::new();
+        for i in 0..entries.count() {
+            let dict_ref = unsafe { entries.value_at_index(i) } as *const CFDictionary;
+            if dict_ref.is_null() {
+                continue;
+            }
+            let dict = unsafe { &*dict_ref };
+            let app_name = dict_string(dict, "kCGWindowOwnerName").unwrap_or_default();
+            if app_name.is_empty() || app_name == "Lookout" {
+                continue;
+            }
+            let title = dict_string(dict, "kCGWindowName").unwrap_or_default();
+            if should_exclude_window(&app_name, &title) {
+                continue;
+            }
+            apps.insert(app_name);
+        }
+        apps.into_iter().collect()
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // On non-macOS, return window app names from xcap
+        use xcap::Window;
+        let mut apps = std::collections::BTreeSet::new();
+        if let Ok(windows) = Window::all() {
+            for w in windows {
+                if let Ok(name) = w.app_name() {
+                    if !name.is_empty() && name != "Lookout" && !should_exclude_window(&name, &w.title().unwrap_or_default()) {
+                        apps.insert(name);
+                    }
+                }
+            }
+        }
+        apps.into_iter().collect()
+    }
+}
+
 /// List available capture sources (monitors + windows).
 #[tauri::command]
 fn list_capture_sources() -> Result<CaptureSourceList, String> {
+    // On Wayland (no X11), xcap cannot enumerate sources.
+    // Return an empty list so the frontend falls through to the portal/Cast flow.
+    #[cfg(target_os = "linux")]
+    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        return Ok(CaptureSourceList {
+            monitors: Vec::new(),
+            windows: Vec::new(),
+        });
+    }
+
     use xcap::Monitor;
     #[cfg(not(target_os = "macos"))]
     use xcap::Window;
@@ -495,7 +689,9 @@ fn is_wayland() -> bool {
 }
 
 #[tauri::command]
-async fn request_screencast(#[allow(unused_variables)] state: State<'_, AppState>) -> Result<Vec<crate::screencast::StreamInfo>, String> {
+async fn request_screencast(
+    #[allow(unused_variables)] state: State<'_, AppState>,
+) -> Result<Vec<crate::screencast::StreamInfo>, String> {
     #[cfg(target_os = "linux")]
     {
         crate::screencast::request_screencast(state).await
@@ -666,6 +862,12 @@ async fn capture_and_upload(
             .ok_or("Not configured — call configure() first")?
     };
 
+    // Read blacklisted apps
+    let blacklisted = {
+        let guard = state.blacklisted_apps.lock().map_err(|e| e.to_string())?;
+        guard.clone()
+    };
+
     // Native screenshot
     let _ = app.emit("capture-progress", "capturing screen...");
     #[allow(unused_mut, unused_assignments)]
@@ -675,7 +877,14 @@ async fn capture_and_upload(
         fd = *guard;
     }
 
-    let screenshot = capture::take_stitched_screenshots(&sources, max_width, max_height, jpeg_quality, fd)?;
+    let screenshot = capture::take_stitched_screenshots_with_blacklist(
+        &sources,
+        max_width,
+        max_height,
+        jpeg_quality,
+        fd,
+        &blacklisted,
+    )?;
     let _ = app.emit(
         "capture-progress",
         format!(
@@ -808,7 +1017,13 @@ pub fn run() {
                     }
                 }
 
-                match crate::capture::take_screenshot_raw(source, max_width, max_height, jpeg_quality, fd) {
+                // Read blacklisted apps for redaction
+                let blacklisted: Vec<String> = app_handle
+                    .try_state::<AppState>()
+                    .and_then(|s| s.blacklisted_apps.lock().ok().map(|g| g.clone()))
+                    .unwrap_or_default();
+
+                match crate::capture::take_screenshot_raw_with_blacklist(source, max_width, max_height, jpeg_quality, fd, &blacklisted) {
                     Ok(res) => responder.respond(
                         http::Response::builder()
                             .header("Content-Type", "image/jpeg")
@@ -854,12 +1069,14 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_liquid_glass::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             config: Mutex::new(None),
             cold_start_urls: Mutex::new(None),
             #[cfg(target_os = "linux")]
             pipewire_fd: Mutex::new(None),
+            blacklisted_apps: Mutex::new(Vec::new()),
         })
         .invoke_handler(tauri::generate_handler![
             list_capture_sources,
@@ -872,7 +1089,17 @@ pub fn run() {
             disable_vibrancy,
             is_wayland,
             request_screencast,
+            set_blacklisted_apps,
+            get_blacklisted_apps,
+            list_running_apps,
+            tray::show_tray,
+            tray::update_tray_time,
+            tray::hide_tray,
+            tray::tray_action,
+            tray::set_tray_state,
+            tray::get_tray_state,
         ])
+        .manage(tray::TrayStateMutex(std::sync::Mutex::new(tray::TrayState::default())))
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {
@@ -1008,6 +1235,11 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 window.set_maximizable(false)?;
                 window.set_fullscreen(false)?;
+
+                // Auto-grant camera/microphone permissions on Windows so the
+                // WebView2 native prompt never appears.
+                #[cfg(target_os = "windows")]
+                windows_permissions::register_permission_handler(&window);
             }
 
             Ok(())

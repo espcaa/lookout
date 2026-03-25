@@ -17,6 +17,9 @@ import { isValidToken, extractToken } from "./utils.js";
 import { PermissionScreen } from "./components/PermissionScreen.js";
 import { RecordPage } from "./components/RecordPage.js";
 import { AddSessionPage } from "./components/AddSessionPage.js";
+import { SettingsPage } from "./components/SettingsPage.js";
+import { TrayApp } from "./components/TrayApp.js";
+import { useBlacklistedApps } from "./hooks/useBlacklistedApps.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 
 const API_BASE = "https://lookout.hackclub.com";
@@ -45,9 +48,18 @@ async function fetchSessionStatus(token: string): Promise<string | null> {
 }
 
 export function App() {
+  const isTray = window.location.hash === "#tray" || window.location.hash.startsWith("#tray?");
+  if (isTray) {
+    return <TrayApp />;
+  }
+  return <MainWindowApp />;
+}
+
+function MainWindowApp() {
   const isMacOS = navigator.userAgent.includes("Mac");
   const [screenPermGranted, setScreenPermGranted] = useState(!isMacOS);
   const [cameraPermGranted, setCameraPermGranted] = useState(!isMacOS);
+  const [isWayland, setIsWayland] = useState(false);
   const { route, navigate } = useHashRouter();
   const tokenStore = useTokenStore();
   const updateStatus = useUpdateCheck();
@@ -55,6 +67,14 @@ export function App() {
     apiBaseUrl: API_BASE,
     tokens: tokenStore.getAllTokenValues(),
   });
+
+  // Initialize blacklisted apps sync from localStorage to Rust backend
+  useBlacklistedApps();
+
+  // Detect Wayland — filter apps feature is unsupported there
+  useEffect(() => {
+    invoke<boolean>("is_wayland").then(setIsWayland).catch(() => {});
+  }, []);
 
   // Deep link handler -- saves token and navigates appropriately.
   // If currently recording another session, pauses it first.
@@ -285,6 +305,14 @@ export function App() {
               }
             }}
             onAdd={() => navigate({ page: "add" })}
+            onSettings={isWayland ? undefined : () => navigate({ page: "settings" })}
+          />
+        );
+      case "settings":
+        return (
+          <SettingsPage
+            onBack={() => navigate({ page: "gallery" })}
+            isWayland={isWayland}
           />
         );
       case "add":
@@ -443,7 +471,7 @@ export function App() {
               position: "absolute",
               inset: 0,
               height: "100%",
-              overflowY: route.page === "gallery" ? "hidden" : "auto",
+              overflowY: (route.page === "gallery") ? "hidden" : "auto",
             }}
           >
             {mainView}
