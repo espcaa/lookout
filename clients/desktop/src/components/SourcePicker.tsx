@@ -308,10 +308,12 @@ export function SourcePicker({ onSelect, submitLabel = "Start Capture" }: Source
     try {
       const streams = await invoke<{ node_id: number }[]>("add_screencast");
       if (streams && streams.length > 0) {
-        setSelected(prev => [
-          ...prev,
-          ...streams.map(s => ({ type: "pipewire" as const, id: s.node_id })),
-        ]);
+        setSelected(prev => {
+          const newSources = streams
+            .map(s => ({ type: "pipewire" as const, id: s.node_id }))
+            .filter(ns => !prev.some(p => sourcesEqual(p, ns)));
+          return [...prev, ...newSources];
+        });
       }
     } catch (e) {
       console.error("Failed to add screencast", e);

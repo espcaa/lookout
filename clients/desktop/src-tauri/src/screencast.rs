@@ -5,6 +5,19 @@ pub struct StreamInfo {
     pub node_id: u32,
 }
 
+/// Close unique file descriptors in the map. Multiple nodes may share the same
+/// fd (from a single portal session), so we deduplicate before closing.
+#[cfg(target_os = "linux")]
+fn close_unique_fds(fds: &std::collections::HashMap<u32, std::os::fd::RawFd>) {
+    use std::collections::HashSet;
+    use std::os::fd::FromRawFd;
+    let unique: HashSet<std::os::fd::RawFd> = fds.values().copied().collect();
+    for fd in unique {
+        // Wrapping in OwnedFd will close the fd on drop
+        drop(unsafe { std::os::fd::OwnedFd::from_raw_fd(fd) });
+    }
+}
+
 /// Helper: run the XDG screencast portal flow and return (streams, raw_fd).
 #[cfg(target_os = "linux")]
 async fn portal_select_sources() -> Result<(Vec<StreamInfo>, std::os::fd::RawFd), String> {
@@ -68,8 +81,10 @@ pub async fn request_screencast(
 ) -> Result<Vec<StreamInfo>, String> {
     let (streams, raw_fd) = portal_select_sources().await?;
 
-    // Replace all existing fds with the new session's streams
+    // Replace all existing fds with the new session's streams.
+    // Close old fds first to avoid leaking file descriptors.
     if let Ok(mut fds) = state.pipewire_fds.lock() {
+        close_unique_fds(&fds);
         fds.clear();
         for s in &streams {
             fds.insert(s.node_id, raw_fd);
