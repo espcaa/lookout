@@ -374,7 +374,7 @@ jobs:
           cat > release-assets/latest.json << ENDJSON
           {
             "version": "v${VERSION}",
-            "notes": "See the assets to download and install.",
+            "notes": "See the assets to download and install.\n(You may need to click \"Show all\" after expanding the dropdown to see one compatible with your system)",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": ${PLATFORMS}
           }
