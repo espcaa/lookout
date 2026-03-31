@@ -258,42 +258,41 @@ export function useNativeCapture(
       setError(String(err));
     });
 
-    // Listen for results from the Rust capture loop
-    const unlisteners: (() => void)[] = [];
-
-    listen<CaptureUploadResult>("capture-tick-result", (event) => {
-      const result = event.payload;
-      setTrackedSeconds(result.trackedSeconds);
-      setLastCaptureAt(Date.now());
-      setScreenshotCount((c) => {
-        const n = c + 1;
-        console.log(`[capture] screenshot #${n} done (Rust), tracked: ${result.trackedSeconds}s`);
-        return n;
-      });
-      setError(null);
-      updatePreview(result.previewBase64);
-    }).then((fn) => unlisteners.push(fn));
-
-    listen<{ message: string }>("capture-tick-error", (event) => {
-      console.error(`[capture] Rust capture error: ${event.payload.message}`);
-      setError(event.payload.message);
-    }).then((fn) => unlisteners.push(fn));
-
-    listen<number>("capture-tracked-seconds", (event) => {
-      setTrackedSeconds(event.payload);
-    }).then((fn) => unlisteners.push(fn));
-
-    listen<{ status: string }>("capture-session-terminated", (event) => {
-      console.warn(`[capture] session terminated: ${event.payload.status}`);
-      capturingRef.current = false;
-      setIsCapturing(false);
-      onSessionTerminatedRef.current?.(event.payload.status);
-    }).then((fn) => unlisteners.push(fn));
+    // Listen for results from the Rust capture loop.
+    // Each listen() returns a Promise<UnlistenFn>. We must await them
+    // during cleanup to avoid leaking listeners on fast unmount.
+    const listenerPromises = [
+      listen<CaptureUploadResult>("capture-tick-result", (event) => {
+        const result = event.payload;
+        setTrackedSeconds(result.trackedSeconds);
+        setLastCaptureAt(Date.now());
+        setScreenshotCount((c) => {
+          const n = c + 1;
+          console.log(`[capture] screenshot #${n} done (Rust), tracked: ${result.trackedSeconds}s`);
+          return n;
+        });
+        setError(null);
+        updatePreview(result.previewBase64);
+      }),
+      listen<{ message: string }>("capture-tick-error", (event) => {
+        console.error(`[capture] Rust capture error: ${event.payload.message}`);
+        setError(event.payload.message);
+      }),
+      listen<number>("capture-tracked-seconds", (event) => {
+        setTrackedSeconds(event.payload);
+      }),
+      listen<{ status: string }>("capture-session-terminated", (event) => {
+        console.warn(`[capture] session terminated: ${event.payload.status}`);
+        capturingRef.current = false;
+        setIsCapturing(false);
+        onSessionTerminatedRef.current?.(event.payload.status);
+      }),
+    ];
 
     return () => {
       console.log("[capture] stopping Rust capture loop");
       invoke("stop_capture_loop").catch(console.error);
-      unlisteners.forEach((fn) => fn());
+      listenerPromises.forEach((p) => p.then((unlisten) => unlisten()));
     };
   }, [isCapturing, isCamera, updatePreview]);
 
