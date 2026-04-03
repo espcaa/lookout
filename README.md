@@ -8,7 +8,7 @@ There are currently two 2 official clients for this service:
 - [Desktop App](https://github.com/hackclub/lookout/releases) - for download on Mac, Windows, and Linux.
 
 > [!NOTE]
-> If you're a YSWS program author hoping to integrate Lookout into your program, please reach out to me via Slack.
+> If you're a YSWS program author hoping to integrate Lookout into your program, please reach out to me via Slack first. See [/docs/integration.md](/docs/integration.md) for technical information on how to integrate Lookout.
 >
 > If you're a Hack Clubber using Lookout and running into issues with Lookout, please reach out to the program's author (and not me). They'll forward the issue to me if needed. - @samliu
 
