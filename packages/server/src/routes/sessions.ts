@@ -103,6 +103,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       const trackedSeconds = await getTrackedSeconds(session.id);
       const screenshotCount = await getScreenshotCount(session.id);
 
+      const baseUrl = process.env.BASE_URL || "http://localhost:3000";
       return {
         name: session.name,
         status: session.status,
@@ -111,9 +112,15 @@ export async function sessionRoutes(app: FastifyInstance) {
         startedAt: session.startedAt?.toISOString() ?? null,
         totalActiveSeconds: session.totalActiveSeconds,
         createdAt: session.createdAt.toISOString(),
-        thumbnailUrl: session.thumbnailUrl ?? null,
-        videoUrl: session.videoUrl ?? null,
-        videoWebmUrl: session.videoWebmUrl ?? null,
+        thumbnailUrl: session.thumbnailR2Key
+          ? `${baseUrl}/api/media/${session.id}/thumbnail.jpg`
+          : null,
+        videoUrl: session.videoR2Key
+          ? `${baseUrl}/api/media/${session.id}/video.mp4`
+          : null,
+        videoWebmUrl: session.videoWebmR2Key
+          ? `${baseUrl}/api/media/${session.id}/video.webm`
+          : null,
         metadata: session.metadata ?? {},
       };
     },
@@ -621,10 +628,15 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       const trackedSeconds = await getTrackedSeconds(session.id);
 
+      const baseUrl = process.env.BASE_URL || "http://localhost:3000";
       return {
         status: session.status,
-        videoUrl: session.videoUrl ?? undefined,
-        videoWebmUrl: session.videoWebmUrl ?? undefined,
+        videoUrl: session.videoR2Key
+          ? `${baseUrl}/api/media/${session.id}/video.mp4`
+          : undefined,
+        videoWebmUrl: session.videoWebmR2Key
+          ? `${baseUrl}/api/media/${session.id}/video.webm`
+          : undefined,
         trackedSeconds,
       };
     },
@@ -803,8 +815,12 @@ export async function sessionRoutes(app: FastifyInstance) {
             createdAt: s.createdAt.toISOString(),
             totalActiveSeconds: s.totalActiveSeconds,
             thumbnailUrl,
-            videoUrl: s.videoUrl ?? null,
-            videoWebmUrl: s.videoWebmUrl ?? null,
+            videoUrl: s.videoR2Key
+              ? `${baseUrl}/api/media/${s.id}/video.mp4`
+              : null,
+            videoWebmUrl: s.videoWebmR2Key
+              ? `${baseUrl}/api/media/${s.id}/video.webm`
+              : null,
             metadata: s.metadata ?? {},
           };
         });

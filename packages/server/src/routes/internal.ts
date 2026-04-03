@@ -86,10 +86,22 @@ export async function internalRoutes(app: FastifyInstance) {
           ),
         );
 
-      // Exclude internal R2 storage keys from response
-      const { videoR2Key, thumbnailR2Key, ...sessionData } = session;
+      // Exclude internal R2 storage keys and build proper media URLs
+      const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+      const { videoR2Key, thumbnailR2Key, videoWebmR2Key, ...sessionData } = session;
       return {
-        session: sessionData,
+        session: {
+          ...sessionData,
+          thumbnailUrl: thumbnailR2Key
+            ? `${baseUrl}/api/media/${session.id}/thumbnail.jpg`
+            : null,
+          videoUrl: videoR2Key
+            ? `${baseUrl}/api/media/${session.id}/video.mp4`
+            : null,
+          videoWebmUrl: videoWebmR2Key
+            ? `${baseUrl}/api/media/${session.id}/video.webm`
+            : null,
+        },
         trackedSeconds: Math.max(0, (Number(count) - 1) * 60),
         screenshotCount: Number(count),
       };
