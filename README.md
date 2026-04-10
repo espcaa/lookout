@@ -1,8 +1,8 @@
 # Lookout
 
-Simple time-lapsing for Hack Club Simple time-tracking via periodic screenshots as a service, designed to be embedded into Hack Club programs. Lookout was previously known as "Collapse".
+Simple time-tracking via periodic screenshots as a service, designed to be embedded into Hack Club programs. Lookout was previously known as "Collapse".
 
-There are currently two 2 official clients for this service:
+There are currently two official clients for this service:
 
 - [Web React SDK](/clients/react/API.md) - for embedding the recorder in your web app.
 - [Desktop App](https://github.com/hackclub/lookout/releases) - for download on Mac, Windows, and Linux.
